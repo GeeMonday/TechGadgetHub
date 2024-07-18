@@ -8,7 +8,7 @@ class StaticPage < ApplicationRecord
     end
   
     def self.ransackable_attributes(auth_object = nil)
-      %w[id title content created_at updated_at]   # Adjust this list based on your needs
-    end
+        ["content", "created_at", "id", "title", "updated_at"]
+      end
   end
   
