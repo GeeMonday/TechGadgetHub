@@ -116,7 +116,7 @@ ActiveAdmin.setup do |config|
   # settings configure the location and method used for the link.
   #
   # This setting changes the path where the link points to. If it's
-  # a string, the strings is used as the path. If it's a Symbol, we
+  # a string, the string is used as the path. If it's a Symbol, we
   # will call the method to return the path.
   #
   # Default:
@@ -164,7 +164,7 @@ ActiveAdmin.setup do |config|
 
   # == Controller Filters
   #
-  # You can add before, after and around filters to all of your
+  # You can add before, after, and around filters to all of your
   # Active Admin resources and pages from here.
   #
   # config.before_action :do_something_awesome
@@ -220,7 +220,7 @@ ActiveAdmin.setup do |config|
 
   # == Register Stylesheets & Javascripts
   #
-  # We recommend using the built in Active Admin layout and loading
+  # We recommend using the built-in Active Admin layout and loading
   # up your own stylesheets / javascripts to customize the look
   # and feel.
   #
@@ -233,6 +233,7 @@ ActiveAdmin.setup do |config|
   # To load a javascript file:
   #   config.register_javascript 'my_javascript.js'
 
+ 
   # == CSV options
   #
   # Set the CSV builder separator
@@ -241,112 +242,9 @@ ActiveAdmin.setup do |config|
   # Force the use of quotes
   # config.csv_options = { force_quotes: true }
 
-  # == Menu System
+  # == Custom Form Builder
   #
-  # You can add a navigation menu to be used in your application, or configure a provided menu
+  # Override the default form builder with your custom form builder
   #
-  # To change the default utility navigation to show a link to your website & a logout btn
-  #
-  #   config.namespace :admin do |admin|
-  #     admin.build_menu :utility_navigation do |menu|
-  #       menu.add label: "My Great Website", url: "http://www.mygreatwebsite.com", html_options: { target: :blank }
-  #       admin.add_logout_button_to_menu menu
-  #     end
-  #   end
-  #
-  # If you wanted to add a static menu item to the default menu provided:
-  #
-  #   config.namespace :admin do |admin|
-  #     admin.build_menu :default do |menu|
-  #       menu.add label: "My Great Website", url: "http://www.mygreatwebsite.com", html_options: { target: "_blank" }
-  #     end
-  #   end
-
-  # == Download Links
-  #
-  # You can disable download links on resource listing pages,
-  # or customize the formats shown per namespace/globally
-  #
-  # To disable/customize for the :admin namespace:
-  #
-  #   config.namespace :admin do |admin|
-  #
-  #     # Disable the links entirely
-  #     admin.download_links = false
-  #
-  #     # Only show XML & PDF options
-  #     admin.download_links = [:xml, :pdf]
-  #
-  #     # Enable/disable the links based on block
-  #     #   (for example, with cancan)
-  #     admin.download_links = proc { can?(:view_download_links) }
-  #
-  #   end
-
-  # == Pagination
-  #
-  # Pagination is enabled by default for all resources.
-  # You can control the default per page count for all resources here.
-  #
-  # config.default_per_page = 30
-  #
-  # You can control the max per page count too.
-  #
-  # config.max_per_page = 10_000
-
-  # == Filters
-  #
-  # By default the index screen includes a "Filters" sidebar on the right
-  # hand side with a filter for each attribute of the registered model.
-  # You can enable or disable them for all resources here.
-  #
-  # config.filters = true
-  #
-  # By default the filters include associations in a select, which means
-  # that every record will be loaded for each association (up
-  # to the value of config.maximum_association_filter_arity).
-  # You can enabled or disable the inclusion
-  # of those filters by default here.
-  #
-  # config.include_default_association_filters = true
-
-  # config.maximum_association_filter_arity = 256 # default value of :unlimited will change to 256 in a future version
-  # config.filter_columns_for_large_association = [
-  #    :display_name,
-  #    :full_name,
-  #    :name,
-  #    :username,
-  #    :login,
-  #    :title,
-  #    :email,
-  #  ]
-  # config.filter_method_for_large_association = '_start'
-
-  # == Head
-  #
-  # You can add your own content to the site head like analytics. Make sure
-  # you only pass content you trust.
-  #
-  # config.head = ''.html_safe
-
-  # == Footer
-  #
-  # By default, the footer shows the current Active Admin version. You can
-  # override the content of the footer here.
-  #
-  # config.footer = 'my custom footer text'
-
-  # == Sorting
-  #
-  # By default ActiveAdmin::OrderClause is used for sorting logic
-  # You can inherit it with own class and inject it for all resources
-  #
-  # config.order_clause = MyOrderClause
-
-  # == Webpacker
-  #
-  # By default, Active Admin uses Sprocket's asset pipeline.
-  # You can switch to using Webpacker here.
-  #
-  # config.use_webpacker = true
+  # config.form_builder = CustomFormBuilder
 end

@@ -1,20 +1,45 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>TechGadgetHub</title>
-    <%= csrf_meta_tags %>
-    <%= csp_meta_tag %>
+<head>
+  <title>TechGadgetHub</title>
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
 
-    <%= stylesheet_link_tag 'application', media: 'all', 'data-turbolinks-track': 'reload' %>
-    <%= javascript_pack_tag 'application', 'data-turbolinks-track': 'reload' %>
-  </head>
+  <%= stylesheet_link_tag "https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" %>
+  <%= javascript_include_tag "https://code.jquery.com/jquery-3.5.1.slim.min.js" %>
+  <%= javascript_include_tag "https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js" %>
+  <%= javascript_include_tag "https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" %>
+  <%= javascript_importmap_tags %>
+</head>
+<body class="bg-gray-100 text-gray-800">
+  <header class="container my-4">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h1 class="display-4 text-center text-md-left">
+          <%= link_to 'TechGadgetHub', root_path, class: 'text-dark font-bold' %>
+        </h1>
+      </div>
+      <div class="col-md-4 text-center text-md-right">
+        <!-- Your search form -->
+      </div>
+    </div>
+    <nav class="nav justify-content-center my-4">
+      <%= link_to 'Home', root_path, class: 'nav-link' %>
+      <%= link_to 'Products', products_path, class: 'nav-link' %>
+      <%= link_to 'Categories', categories_path, class: 'nav-link' %>
+      <!-- Add more navigation links as needed -->
+    </nav>
+  </header>
 
-  <body>
+  <div class="container">
+    <p class="notice alert alert-info"><%= notice %></p>
+    <p class="alert alert-danger"><%= alert %></p>
+
     <%= yield %>
+  </div>
 
-    <footer>
-      <%= link_to 'Contact', static_page_path('Contact') %> |
-      <%= link_to 'About', static_page_path('About') %>
-    </footer>
-  </body>
+  <footer class="container my-4 text-center">
+    <p>&copy; 2024 TechGadgetHub. All rights reserved.</p>
+  </footer>
+</body>
 </html>

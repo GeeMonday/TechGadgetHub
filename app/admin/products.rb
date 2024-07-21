@@ -33,8 +33,8 @@ ActiveAdmin.register Product do
     f.inputs do
       f.input :name
       f.input :description
-      f.input :price
-      f.input :stock
+      f.input :price, min: 0.01
+      f.input :stock, min: 0  
     end
     f.actions
   end

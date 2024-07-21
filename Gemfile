@@ -79,3 +79,10 @@ gem "kaminari", "~> 1.2"
 gem 'activeadmin_quill_editor'
 
 gem 'image_processing', '~> 1.2'
+
+gem 'formtastic'
+
+
+
+
+

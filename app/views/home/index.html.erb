@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TechGadgetHub</title>
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+
+  <!-- Bootstrap CSS -->
+  <%= stylesheet_link_tag "https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css", media: 'all', 'data-turbo-track': 'reload' %>
+  
+  <!-- jQuery and Bootstrap JavaScript -->
+  <%= javascript_include_tag "https://code.jquery.com/jquery-3.5.1.slim.min.js", 'data-turbo-track': 'reload' %>
+  <%= javascript_include_tag "https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js", 'data-turbo-track': 'reload' %>
+  <%= javascript_include_tag "https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js", 'data-turbo-track': 'reload' %>
+
+  <%= javascript_importmap_tags %>
+</head>
+<body class="bg-light text-dark">
+  <div class="container">
+    <p class="notice alert alert-info"><%= notice %></p>
+    <p class="alert alert-danger"><%= alert %></p>
+
+    <main class="my-4">
+      <h2>Welcome to TechGadgetHub</h2>
+      <div class="mb-3">
+        <%= link_to 'Shop Now', products_path, class: 'btn btn-primary' %>
+        <!-- Additional buttons or links can be added here -->
+      </div>
+      
+      <section>
+        <h3>Featured Products</h3>
+        <ul class="list-unstyled">
+          <% if @featured_products.present? %>
+            <% @featured_products.each do |product| %>
+              <li class="media mb-4">
+                <%= image_tag product.image_url, alt: product.name, size: "100x100", class: "me-3" %>
+                <div class="media-body">
+                  <h5 class="mt-0 mb-1">
+                    <%= link_to product.name, product_path(product) %>
+                  </h5>
+                  <p><%= number_to_currency(product.price) %></p>
+                </div>
+              </li>
+            <% end %>
+          <% else %>
+            <p>No featured products available at the moment.</p>
+          <% end %>
+        </ul>
+      </section>
+      
+      <section>
+        <h3>Categories</h3>
+        <ul class="list-unstyled">
+          <% @categories.each do |category| %>
+            <li>
+              <%= link_to category.name, category_path(category) %>
+            </li>
+          <% end %>
+        </ul>
+      </section>
+      
+    </main>
+  </div>
+
+  <footer class="container my-4 text-center">
+    <p>&copy; 2024 TechGadgetHub. All rights reserved.</p>
+    <p>
+      <%= link_to 'Contact', static_page_path('Contact') %> |
+      <%= link_to 'About', static_page_path('About') %>
+    </p>
+  </footer>
+</body>
+</html>

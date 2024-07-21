@@ -4,9 +4,9 @@ class ProductCategory < ApplicationRecord
   
     validates :product_id, presence: true
     validates :category_id, presence: true
-
+  
     def self.ransackable_associations(auth_object = nil)
-        ["product_categories", "products"]
-      end
+      %w[product category]
+    end
   end
   
