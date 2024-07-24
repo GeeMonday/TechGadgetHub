@@ -1,12 +1,17 @@
 Rails.application.routes.draw do
-  devise_for :users
+  devise_for :users, controllers: { registrations: 'users/registrations' }
   root 'home#index' # Sets the home page
 
   resources :products, only: [:index, :show]
   resources :categories, only: [:index, :show]
-  resource :cart, only: [:show]
   resources :static_pages, only: [:show], param: :title
-
+  resource :cart, only: [:show] do
+    post 'add_to_cart', on: :collection
+    patch 'update', on: :collection
+    delete 'remove', on: :collection
+    get 'checkout', on: :collection
+    post 'complete_checkout', on: :collection
+  end
 
   devise_for :admin_users, ActiveAdmin::Devise.config
   ActiveAdmin.routes(self)
