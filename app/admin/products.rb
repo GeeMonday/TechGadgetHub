@@ -1,23 +1,8 @@
 ActiveAdmin.register Product do
+  permit_params :name, :description, :price, :stock, :image
 
-  # See permitted parameters documentation:
-  # https://github.com/activeadmin/activeadmin/blob/master/docs/2-resource-customization.md#setting-up-strong-parameters
-  #
-  # Uncomment all parameters which should be permitted for assignment
-  #
-  # permit_params :name, :description, :price, :stock
-  #
-  # or
-  #
-  # permit_params do
-  #   permitted = [:name, :description, :price, :stock]
-  #   permitted << :other if params[:action] == 'create' && current_user.admin?
-  #   permitted
-  # end
-  permit_params :name, :description, :price, :stock  # Uncomment and specify permitted parameters for assignment
-  
-  filter :name  # Example of adding a basic filter for 'name'
-  filter :price  # Example of adding a basic filter for 'price'
+  filter :name
+  filter :price
 
   index do
     selectable_column
@@ -26,6 +11,13 @@ ActiveAdmin.register Product do
     column :description
     column :price
     column :stock
+    column :image do |product|
+      if product.image.attached?
+        image_tag url_for(product.image), size: "100x100"
+      else
+        "No Image"
+      end
+    end
     actions
   end
 
@@ -34,8 +26,29 @@ ActiveAdmin.register Product do
       f.input :name
       f.input :description
       f.input :price, min: 0.01
-      f.input :stock, min: 0  
+      f.input :stock, min: 0
+      f.input :image, as: :file
     end
     f.actions
+  end
+
+  controller do
+    def create
+      @product = Product.new(permitted_params[:product])
+      if @product.save
+        redirect_to admin_product_path(@product), notice: "Product created successfully."
+      else
+        render :new
+      end
+    end
+
+    def update
+      @product = Product.find(params[:id])
+      if @product.update(permitted_params[:product])
+        redirect_to admin_product_path(@product), notice: "Product updated successfully."
+      else
+        render :edit
+      end
+    end
   end
 end

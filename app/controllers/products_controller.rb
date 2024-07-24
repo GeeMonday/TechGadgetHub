@@ -1,10 +1,13 @@
 class ProductsController < ApplicationController
   def index
-    # Initialize ransack search
-    @q = Product.joins(:categories).ransack(params[:q])
-    @products = @q.result(distinct: true)
+    # Fetch all products initially
+    @products = Product.all
 
-    # Apply additional filters based on query parameters
+    # Apply filters based on query parameters
+    if params[:category_id].present?
+      @products = @products.where(category_id: params[:category_id])
+    end
+
     if params[:on_sale]
       @products = @products.where(on_sale: true)
     end
@@ -15,6 +18,10 @@ class ProductsController < ApplicationController
 
     if params[:recently_updated]
       @products = @products.where('updated_at >= ?', 3.days.ago)
+    end
+
+    if params[:name].present?
+      @products = @products.where("name ILIKE ?", "%#{params[:name]}%")
     end
 
     # Paginate the results

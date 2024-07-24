@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  devise_for :users
   root 'home#index' # Sets the home page
 
   resources :products, only: [:index, :show]
