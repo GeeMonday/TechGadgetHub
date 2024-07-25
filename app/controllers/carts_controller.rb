@@ -32,12 +32,12 @@ class CartsController < ApplicationController
   def update
     @cart = current_user.cart
     if @cart
-      product = Product.find(params[:product_id])
-      quantity = params[:quantity].to_i
+      cart_item_id = params[:cart_item_id]
+      new_quantity = params[:quantity].to_i
 
-      item = @cart.cart_items.find_by(product: product)
+      item = @cart.cart_items.find(cart_item_id)
       if item
-        item.update(quantity: quantity)
+        item.update(quantity: new_quantity)
       end
     end
 
@@ -47,9 +47,9 @@ class CartsController < ApplicationController
   def remove
     @cart = current_user.cart
     if @cart
-      product = Product.find(params[:product_id])
+      cart_item_id = params[:id]  # Use params[:id] for removing specific item
 
-      item = @cart.cart_items.find_by(product: product)
+      item = @cart.cart_items.find(cart_item_id)
       if item
         item.destroy
       end

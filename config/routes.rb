@@ -5,7 +5,7 @@ Rails.application.routes.draw do
   resources :products, only: [:index, :show]
   resources :categories, only: [:index, :show]
   resources :static_pages, only: [:show], param: :title
-  resource :cart, only: [:show] do
+  resource :cart, only: [:show, :update] do
     post 'add_to_cart', on: :collection
     patch 'update', on: :collection
     delete 'remove', on: :collection
