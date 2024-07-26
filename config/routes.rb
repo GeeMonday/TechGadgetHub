@@ -1,25 +1,32 @@
 Rails.application.routes.draw do
+  # Devise routes for user authentication
   devise_for :users, controllers: { registrations: 'users/registrations' }
+
+  # Devise routes for admin authentication
+  devise_for :admin_users, ActiveAdmin::Devise.config
+
+  # Root path
   root 'home#index' # Sets the home page
 
+  # Resources routes
   resources :products, only: [:index, :show]
   resources :categories, only: [:index, :show]
   resources :static_pages, only: [:show], param: :title
+  resources :orders, only: [:show] 
+
+  # Cart routes
   resource :cart, only: [:show, :update] do
-    post 'add_to_cart', on: :collection
-    patch 'update', on: :collection
-    delete 'remove', on: :collection
-    get 'checkout', on: :collection
-    post 'complete_checkout', on: :collection
+    post 'add_to_cart'
+    delete 'remove/:id', to: 'carts#remove', as: :remove
+    get 'checkout'
+    get 'order_confirmation/:id', to: 'orders#confirmation', as: :order_confirmation
+    post 'complete_checkout'
   end
 
-  devise_for :admin_users, ActiveAdmin::Devise.config
+  # ActiveAdmin routes
   ActiveAdmin.routes(self)
 
-  # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
-
-  # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
-  # Can be used by load balancers and uptime monitors to verify that the app is live.
+  # Health check route
   get "up" => "rails/health#show", as: :rails_health_check
 
   # Static pages route (if applicable)

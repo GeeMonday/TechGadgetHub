@@ -12,8 +12,7 @@
     <p><%= number_to_currency(@product.price) %></p>
     <p>Stock: <%= @product.stock %></p>
 
-    <!-- Add to Cart Link -->
-    <%= form_with url: add_to_cart_cart_path, method: :post, local: true do %>
+    <%= form_with url: '/cart/add_to_cart', method: :post, local: true do %>
       <%= hidden_field_tag :product_id, @product.id %>
       <%= number_field_tag :quantity, 1, min: 1, class: 'form-control mb-2', placeholder: 'Quantity' %>
       <%= submit_tag 'Add to Cart', class: 'btn btn-primary' %>

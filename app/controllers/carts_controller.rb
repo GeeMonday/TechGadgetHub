@@ -13,20 +13,17 @@ class CartsController < ApplicationController
   end
 
   def add_to_cart
-    @cart = current_user.cart
-    if @cart.nil?
-      @cart = Cart.create(user: current_user)  # Create a new cart if none exists
-    end
-
     product = Product.find(params[:product_id])
     quantity = params[:quantity].to_i
 
-    # Find existing cart item or create a new one
-    item = @cart.cart_items.find_or_initialize_by(product: product)
-    item.quantity = quantity
-    item.save
+    if current_user.cart
+      current_user.cart.add_product(product, quantity)  # Adjust this to your cart logic
+      flash[:notice] = 'Product added to cart!'
+    else
+      flash[:alert] = 'Failed to add product to cart.'
+    end
 
-    redirect_to cart_path, notice: 'Product added to cart.'
+    redirect_to product_path(product)
   end
 
   def update
@@ -35,10 +32,14 @@ class CartsController < ApplicationController
       cart_item_id = params[:cart_item_id]
       new_quantity = params[:quantity].to_i
 
-      item = @cart.cart_items.find(cart_item_id)
+      item = @cart.cart_items.find_by(id: cart_item_id)
       if item
         item.update(quantity: new_quantity)
+      else
+        flash[:alert] = 'Item not found in cart.'
       end
+    else
+      flash[:alert] = 'Cart not found.'
     end
 
     redirect_to cart_path
@@ -49,32 +50,89 @@ class CartsController < ApplicationController
     if @cart
       cart_item_id = params[:id]  # Use params[:id] for removing specific item
 
-      item = @cart.cart_items.find(cart_item_id)
+      item = @cart.cart_items.find_by(id: cart_item_id)
       if item
         item.destroy
+        flash[:notice] = 'Item removed from cart.'
+      else
+        flash[:alert] = 'Item not found in cart.'
       end
+    else
+      flash[:alert] = 'Cart not found.'
     end
 
     redirect_to cart_path
   end
 
   def checkout
-    @order = Order.new
+    @order = Order.new(
+      address_street: current_user.address_street,
+      address_city: current_user.address_city,
+      address_state: current_user.address_state,
+      address_zip_code: current_user.address_zip_code
+    )
+    @cart = current_user.cart
+    if @cart
+      @cart_items = @cart.cart_items.includes(:product)
+      @cart_total = @cart.cart_items.sum { |item| item.product.price * item.quantity }
+    else
+      @cart_items = []
+      @cart_total = 0
+    end
   end
+  
+  
 
   def complete_checkout
     @order = Order.new(order_params)
-    if @order.save
-      current_user.cart.cart_items.destroy_all  # Clear the cart after successful checkout
-      redirect_to order_confirmation_path(@order), notice: 'Checkout completed successfully.'
+    @order.user = current_user
+    @order.status = 'pending'
+  
+    if current_user.cart && current_user.cart.cart_items.present?
+      cart_total = current_user.cart.cart_items.sum do |item|
+        item.product.price * item.quantity
+      end
+  
+      province = params[:order][:province]
+      tax_details = TaxCalculator.calculate_total_price(cart_total, province)
+  
+      # Debug log
+      Rails.logger.debug "Cart Total: #{cart_total}"
+      Rails.logger.debug "Tax Details: #{tax_details.inspect}"
+  
+      # Ensure the tax details and subtotal are set
+      @order.subtotal = cart_total
+      @order.gst = tax_details[:gst]
+      @order.pst = tax_details[:pst]
+      @order.hst = tax_details[:hst]
+      @order.total_price = tax_details[:total_price]
+  
+      # Debug log for order before saving
+      Rails.logger.debug "Order Details Before Save: #{@order.attributes.inspect}"
+  
+      if @order.save
+        current_user.cart.cart_items.destroy_all  # Clear the cart
+  
+        respond_to do |format|
+          format.html { redirect_to order_path(@order), notice: 'Checkout completed successfully.' }
+          format.turbo_stream { render turbo_stream: turbo_stream.replace('cart', partial: 'orders/confirmation', locals: { order: @order }) }
+        end
+      else
+        flash[:alert] = "Order could not be processed. Errors: #{@order.errors.full_messages.join(', ')}"
+        respond_to do |format|
+          format.html { render :checkout }
+          format.turbo_stream { render turbo_stream: turbo_stream.replace('checkout', partial: 'carts/checkout', locals: { order: @order }) }
+        end
+      end
     else
-      render :checkout
+      flash[:alert] = "Your cart is empty or not found."
+      redirect_to cart_path
     end
   end
 
   private
 
   def order_params
-    params.require(:order).permit(:address, :province, :payment_method, :total_price)
+    params.require(:order).permit(:address, :province, :payment_method)
   end
 end

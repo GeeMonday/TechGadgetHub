@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_07_24_153206) do
+ActiveRecord::Schema[7.1].define(version: 2024_07_26_044416) do
   create_table "active_admin_comments", force: :cascade do |t|
     t.string "namespace"
     t.text "body"
@@ -62,6 +62,9 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_24_153206) do
     t.string "country"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "province"
+    t.string "address_line1"
+    t.string "state"
   end
 
   create_table "admin_users", force: :cascade do |t|
@@ -103,6 +106,17 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_24_153206) do
     t.index ["product_id"], name: "index_categories_products_on_product_id"
   end
 
+  create_table "order_items", force: :cascade do |t|
+    t.integer "order_id", null: false
+    t.integer "product_id", null: false
+    t.integer "quantity"
+    t.decimal "price"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["order_id"], name: "index_order_items_on_order_id"
+    t.index ["product_id"], name: "index_order_items_on_product_id"
+  end
+
   create_table "orders", force: :cascade do |t|
     t.integer "user_id"
     t.integer "province_id"
@@ -110,6 +124,18 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_24_153206) do
     t.string "status"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "address"
+    t.string "province"
+    t.string "payment_method"
+    t.decimal "subtotal", precision: 10, scale: 2
+    t.decimal "gst", precision: 10, scale: 2
+    t.decimal "pst", precision: 10, scale: 2
+    t.decimal "hst", precision: 10, scale: 2
+    t.string "address_street"
+    t.string "address_city"
+    t.string "address_state"
+    t.string "address_postal_code"
+    t.string "address_zip_code"
   end
 
   create_table "payments", force: :cascade do |t|
@@ -147,6 +173,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_24_153206) do
     t.decimal "gst_rate"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "code"
   end
 
   create_table "static_pages", force: :cascade do |t|
@@ -176,12 +203,19 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_24_153206) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "user_id"
+    t.datetime "remember_created_at"
+    t.string "address_street"
+    t.string "address_city"
+    t.string "address_state"
+    t.string "address_zip_code"
     t.index ["address_id"], name: "index_users_on_address_id"
     t.index ["user_id"], name: "index_users_on_user_id"
   end
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "order_items", "orders"
+  add_foreign_key "order_items", "products"
   add_foreign_key "product_categories", "categories"
   add_foreign_key "product_categories", "products"
   add_foreign_key "tax_rates", "provinces"

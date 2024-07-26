@@ -5,7 +5,8 @@ class User < ApplicationRecord
 
   # Associations
   has_one :cart, dependent: :destroy
-  belongs_to :address, optional: true
+  has_one :address, dependent: :destroy
+  accepts_nested_attributes_for :address, allow_destroy: true
 
   # Validations
   validates :username, presence: true, uniqueness: true
@@ -25,7 +26,8 @@ class User < ApplicationRecord
 
   private
 
+  # Create a cart for the user after they sign up
   def create_cart
-    Cart.create(user: self) if self.cart.nil?
+    Cart.create(user: self) unless cart.present?
   end
 end

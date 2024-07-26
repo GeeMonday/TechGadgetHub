@@ -1,0 +1,13 @@
+<main class="container my-4">
+  <h2>Order Confirmation</h2>
+
+  <p>Thank you for your order!</p>
+  <p>Order Number: <%= @order.id %></p>
+  <p>Address: <%= @order.address %></p>
+  <p>Province: <%= @order.province %></p>
+  <p>Subtotal: <%= number_to_currency(@order.subtotal) %></p>
+  <p>GST: <%= number_to_currency(@order.gst) %></p>
+  <p>PST: <%= number_to_currency(@order.pst) %></p>
+  <p>HST: <%= number_to_currency(@order.hst) %></p>
+  <p>Total: <%= number_to_currency(@order.total_price) %></p>
+</main>

@@ -5,11 +5,19 @@
   <%= csrf_meta_tags %>
   <%= csp_meta_tag %>
 
+  <!-- Bootstrap CSS -->
   <%= stylesheet_link_tag "https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" %>
+
+  <!-- jQuery (must be loaded before Bootstrap's JavaScript) -->
   <%= javascript_include_tag "https://code.jquery.com/jquery-3.5.1.slim.min.js" %>
+
+  <!-- Popper.js (required for Bootstrap) -->
   <%= javascript_include_tag "https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js" %>
+
+  <!-- Bootstrap JS -->
   <%= javascript_include_tag "https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" %>
-  <%= javascript_include_tag 'application', 'data-turbolinks-track': 'reload' %>
+
+  <!-- Rails JavaScript (with importmaps) -->
   <%= javascript_importmap_tags %>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -31,8 +39,8 @@
       <% if user_signed_in? %>
         <span>Welcome, <%= current_user.username %>!</span> |
         <%= link_to 'Edit Profile', edit_user_registration_path %> |
-        <%= link_to 'View Cart', cart_path, class: 'nav-link' %> |
-        <%= link_to 'Logout', destroy_user_session_path, method: :delete %>
+        <%= link_to 'View Cart', cart_path %> |
+        <%= button_to 'Logout', destroy_user_session_path, method: :delete, data: { confirm: 'Are you sure?' } %>
       <% else %>
         <%= link_to 'Sign Up', new_user_registration_path %> |
         <%= link_to 'Login', new_user_session_path %>
