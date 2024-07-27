@@ -1,8 +1,7 @@
-# app/models/order_item.rb
 class OrderItem < ApplicationRecord
   belongs_to :order
   belongs_to :product
 
-  # Add any necessary validations here
-  validates :quantity, :price, presence: true
+  validates :quantity, presence: true, numericality: { greater_than: 0 }
+  validates :price, presence: true, numericality: { greater_than: 0 }
 end

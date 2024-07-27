@@ -111,7 +111,7 @@ class CartsController < ApplicationController
       Rails.logger.debug "Order Details Before Save: #{@order.attributes.inspect}"
   
       if @order.save
-        current_user.cart.cart_items.destroy_all  # Clear the cart
+  
   
         respond_to do |format|
           format.html { redirect_to order_path(@order), notice: 'Checkout completed successfully.' }

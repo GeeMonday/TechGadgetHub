@@ -3,7 +3,10 @@
   <h2>Order Details</h2>
 
   <p><strong>Order Number:</strong> <%= @order.id %></p>
-  <p><strong>Address:</strong> <%= @order.address %></p>
+  <p><strong>Street Address:</strong> <%= @order.address_street || 'Not specified' %></p>
+  <p><strong>City:</strong> <%= @order.address_city || 'Not specified' %></p>
+  <p><strong>State:</strong> <%= @order.address_state || 'Not specified' %></p>
+  <p><strong>Zip Code:</strong> <%= @order.address_zip_code || 'Not specified' %></p>
   <p><strong>Province:</strong> <%= @order.province %></p>
   <p><strong>Subtotal:</strong> <%= number_to_currency(@order.subtotal) %></p>
   <p><strong>GST:</strong> <%= number_to_currency(@order.gst) %></p>
@@ -22,7 +25,7 @@
   </ul>
 
   <div class="mt-4">
-    <%= link_to 'Back to Orders', cart_path, class: 'btn btn-primary' %>
+    <%= link_to 'Back to Orders', orders_path, class: 'btn btn-primary' %>
     <%= link_to 'Continue Shopping', root_path, class: 'btn btn-secondary' %>
   </div>
 </main>

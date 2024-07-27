@@ -12,7 +12,7 @@ Rails.application.routes.draw do
   resources :products, only: [:index, :show]
   resources :categories, only: [:index, :show]
   resources :static_pages, only: [:show], param: :title
-  resources :orders, only: [:show] 
+  resources :orders, only: [:index, :show]
 
   # Cart routes
   resource :cart, only: [:show, :update] do

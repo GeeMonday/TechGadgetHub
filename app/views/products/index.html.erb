@@ -35,7 +35,20 @@
           <h5 class="mt-0 mb-1">
             <%= link_to product.name, product_path(product) %>
           </h5>
-          <p><%= number_to_currency(product.price) %></p>
+          <% if product.on_sale %>
+            <p>
+              <strong>Sale Price:</strong> <%= number_to_currency(product.sale_price) %> 
+              <small>
+                <del><%= number_to_currency(product.price) %></del>
+              </small>
+              <br>
+              <span class="text-danger">
+                <%= "#{percentage_off(product.price, product.sale_price)}% off" %>
+              </span>
+            </p>
+          <% else %>
+            <p><%= number_to_currency(product.price) %></p>
+          <% end %>
         </div>
       </li>
     <% end %>

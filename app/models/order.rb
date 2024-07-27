@@ -1,17 +1,27 @@
-# app/models/order.rb
 class Order < ApplicationRecord
   belongs_to :user
+  has_one :address, through: :user
   has_many :order_items, dependent: :destroy
+  accepts_nested_attributes_for :order_items, allow_destroy: true
 
   validates :user, presence: true
   validates :status, presence: true
   validates :total_price, presence: true, numericality: { greater_than_or_equal_to: 0 }
-  validates :subtotal, :gst, :pst, :hst, presence: true
+  validates :subtotal, :gst, :pst, :hst, presence: true, numericality: { greater_than_or_equal_to: 0 }
 
   before_validation :set_defaults
 
+  def total_price
+    # Calculate total price based on order_items
+    order_items.sum(&:price) # Ensure `OrderItem` has a `price` attribute
+  end
+
+  def self.ransackable_associations(auth_object = nil)
+    ["address", "order_items", "province", "user"]
+  end
+
   def self.ransackable_attributes(auth_object = nil)
-    ["address", "created_at", "gst", "hst", "id", "payment_method", "province", "pst", "status", "subtotal", "total_price", "updated_at", "user_id"]
+    super + ["subtotal", "gst", "pst", "hst", "total_price", "status"]
   end
 
   private

@@ -16,4 +16,12 @@ module ApplicationHelper
         ['Yukon', 'YT']
       ]
     end
+
+    def percentage_off(original_price, sale_price)
+      return 0 if original_price.nil? || sale_price.nil? || original_price.zero?
+  
+      percentage = ((original_price - sale_price) / original_price) * 100
+      percentage.round(2)
+    end
+    
   end

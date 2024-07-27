@@ -4,6 +4,7 @@ class User < ApplicationRecord
          :recoverable, :rememberable, :validatable
 
   # Associations
+  has_many :orders
   has_one :cart, dependent: :destroy
   has_one :address, dependent: :destroy
   accepts_nested_attributes_for :address, allow_destroy: true
