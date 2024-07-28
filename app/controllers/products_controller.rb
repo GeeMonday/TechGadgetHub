@@ -28,7 +28,7 @@ class ProductsController < ApplicationController
     @products = @products.page(params[:page]).per(10)
 
     # Fetch featured products
-    @featured_products = Product.limit(10)
+    @featured_products = Product.order(updated_at: :desc).limit(10)
   end
 
   def show

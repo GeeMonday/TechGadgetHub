@@ -5,7 +5,10 @@ ActiveAdmin.register TaxRate do
   index do
     selectable_column
     id_column
-    column :province
+    column 'Province' do |tax_rate|
+      province = tax_rate.province
+      "#{province.name} (#{province.name.split.map { |word| word[0] }.join})"
+    end
     column :gst
     column :pst
     column :hst

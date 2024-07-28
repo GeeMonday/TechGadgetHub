@@ -1,28 +1,72 @@
-<!-- app/views/orders/show.html.erb -->
 <main class="container my-4">
   <h2>Order Details</h2>
-
-  <p><strong>Order Number:</strong> <%= @order.id %></p>
-  <p><strong>Street Address:</strong> <%= @order.address_street || 'Not specified' %></p>
-  <p><strong>City:</strong> <%= @order.address_city || 'Not specified' %></p>
-  <p><strong>State:</strong> <%= @order.address_state || 'Not specified' %></p>
-  <p><strong>Zip Code:</strong> <%= @order.address_zip_code || 'Not specified' %></p>
-  <p><strong>Province:</strong> <%= @order.province %></p>
-  <p><strong>Subtotal:</strong> <%= number_to_currency(@order.subtotal) %></p>
-  <p><strong>GST:</strong> <%= number_to_currency(@order.gst) %></p>
-  <p><strong>PST:</strong> <%= number_to_currency(@order.pst) %></p>
-  <p><strong>HST:</strong> <%= number_to_currency(@order.hst) %></p>
-  <p><strong>Total:</strong> <%= number_to_currency(@order.total_price) %></p>
+  
+  <table class="table table-bordered">
+    <tbody>
+      <tr>
+        <th>Order Number:</th>
+        <td><%= @order.id %></td>
+      </tr>
+      <tr>
+        <th>Street Address:</th>
+        <td><%= @order.address_street || 'Not specified' %></td>
+      </tr>
+      <tr>
+        <th>City:</th>
+        <td><%= @order.address_city || 'Not specified' %></td>
+      </tr>
+      <tr>
+        <th>Zip Code:</th>
+        <td><%= @order.address_zip_code || 'Not specified' %></td>
+      </tr>
+      <tr>
+        <th>Province:</th>
+        <td><%= @order.province || 'Not specified' %></td>
+      </tr>
+      <tr>
+        <th>total before taxes:</th>
+        <td><%= number_to_currency(@order.subtotal) %></td>
+      </tr>
+      <tr>
+        <th>GST:</th>
+        <td><%= number_to_currency(@order.gst) %></td>
+      </tr>
+      <tr>
+        <th>PST:</th>
+        <td><%= number_to_currency(@order.pst) %></td>
+      </tr>
+      <tr>
+        <th>HST:</th>
+        <td><%= number_to_currency(@order.hst) %></td>
+      </tr>
+      <tr>
+        <th>total after taxes:</th>
+        <td><%= number_to_currency(@order.total_price) %></td>
+      </tr>
+    </tbody>
+  </table>
 
   <h3>Items in Your Order</h3>
-  <ul class="list-unstyled">
-    <% @order.order_items.each do |item| %>
-      <li>
-        <strong><%= item.product.name %></strong> - 
-        <%= item.quantity %> x <%= number_to_currency(item.product.price) %>
-      </li>
-    <% end %>
-  </ul>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Quantity</th>
+        <th>Price</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @order.order_items.each do |item| %>
+        <tr>
+          <td><%= item.product.name %></td>
+          <td><%= item.quantity %></td>
+          <td><%= number_to_currency(item.product.price) %></td>
+          <td><%= number_to_currency(item.quantity * item.product.price) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
 
   <div class="mt-4">
     <%= link_to 'Back to Orders', orders_path, class: 'btn btn-primary' %>

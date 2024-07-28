@@ -11,23 +11,24 @@ class Order < ApplicationRecord
 
   before_validation :set_defaults
 
-  def total_price
-    # Calculate total price based on order_items
-    order_items.sum(&:price) # Ensure `OrderItem` has a `price` attribute
-  end
-
-  def self.ransackable_associations(auth_object = nil)
-    ["address", "order_items", "province", "user"]
-  end
-
-  def self.ransackable_attributes(auth_object = nil)
-    super + ["subtotal", "gst", "pst", "hst", "total_price", "status"]
-  end
 
   private
 
   def set_defaults
     self.status ||= 'pending'
     self.total_price ||= 0
+  end
+
+  def calculate_tax(tax_type)
+    tax_rate = TaxRate.find_by(province_id: address&.province_id) # Use address's province_id
+    tax_rate ? subtotal * (tax_rate.send(tax_type) / 100.0) : 0
+  end
+
+  def self.ransackable_associations(auth_object = nil)
+    ["address", "order_items", "user"]
+  end
+
+  def self.ransackable_attributes(auth_object = nil)
+    %w[id user_id created_at updated_at status total_price subtotal gst pst hst address_street address_city address_postal_code province_name]
   end
 end

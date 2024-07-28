@@ -8,7 +8,7 @@ class Cart < ApplicationRecord
   # Add a product to the cart
   def add_product(product, quantity)
     cart_item = cart_items.find_by(product_id: product.id)
-    
+
     if cart_item
       # Update the quantity if the product is already in the cart
       cart_item.update(quantity: cart_item.quantity + quantity)
@@ -20,7 +20,7 @@ class Cart < ApplicationRecord
 
   # Calculate the total price of the items in the cart
   def total_price
-    cart_items.includes(:product).sum('cart_items.quantity * products.price')
+    cart_items.joins(:product).sum('cart_items.quantity * products.price')
   end
 
   def self.ransackable_associations(auth_object = nil)

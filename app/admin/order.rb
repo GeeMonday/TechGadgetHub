@@ -3,10 +3,18 @@ ActiveAdmin.register Order do
     selectable_column
     id_column
     column :user
-    column :address_street
-    column :address_city
-    column :address_postal_code
-    column :province
+    column 'Street' do |order|
+      order.address&.street
+    end
+    column 'City' do |order|
+      order.address&.city
+    end
+    column 'Postal Code' do |order|
+      order.address&.postal_code
+    end
+    column 'Province' do |order|
+      order.address&.province&.name
+    end
     column :status
     column :subtotal
     column :gst
@@ -18,11 +26,12 @@ ActiveAdmin.register Order do
     actions
   end
 
+  # Custom Ransack filter configuration
   filter :user, as: :select, collection: -> { User.pluck(:username, :id) }
-  filter :address_street
-  filter :address_city
-  filter :address_postal_code
-  filter :province
+  filter :address_street, as: :string, label: 'Street'
+  filter :address_city, as: :string, label: 'City'
+  filter :address_postal_code, as: :string, label: 'Postal Code'
+  filter :address_province_id, as: :select, collection: -> { Province.pluck(:name, :id) }, label: 'Province'
   filter :status
   filter :subtotal
   filter :total_price
@@ -39,9 +48,9 @@ ActiveAdmin.register Order do
     end
 
     f.inputs 'Address Details' do
-      f.input :address_street
-      f.input :address_city
-      f.input :address_postal_code
+      f.input :address_street, label: 'Street'
+      f.input :address_city, label: 'City'
+      f.input :address_postal_code, label: 'Postal Code'
       f.input :province_id, as: :select, collection: Province.all.map { |p| [p.name, p.id] }, label: 'Province'
     end
 
@@ -49,7 +58,7 @@ ActiveAdmin.register Order do
       f.has_many :order_items, allow_destroy: true, new_record: true do |oi|
         oi.input :product
         oi.input :quantity
-        oi.input :price, as: :number, min: 0 # Specify min value here
+        oi.input :price, as: :number, min: 0
       end
     end
 
@@ -67,10 +76,18 @@ ActiveAdmin.register Order do
       row :total_price
       row :created_at
       row :updated_at
-      row :address_street
-      row :address_city
-      row :address_postal_code
-      row :province
+      row 'Street' do
+        order.address&.street
+      end
+      row 'City' do
+        order.address&.city
+      end
+      row 'Postal Code' do
+        order.address&.postal_code
+      end
+      row 'Province' do
+        order.address&.province&.name
+      end
       row 'Customer' do
         link_to order.user.username, admin_user_path(order.user) if order.user
       end
