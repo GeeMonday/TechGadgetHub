@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_07_28_002558) do
+ActiveRecord::Schema[7.1].define(version: 2024_07_28_031648) do
   create_table "active_admin_comments", force: :cascade do |t|
     t.string "namespace"
     t.text "body"
@@ -137,6 +137,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_28_002558) do
     t.string "address_state"
     t.string "address_postal_code"
     t.string "address_zip_code"
+    t.string "stripe_charge_id"
   end
 
   create_table "payments", force: :cascade do |t|

@@ -4,7 +4,7 @@ class CartsController < ApplicationController
   def show
     @cart = current_user.cart || Cart.create(user: current_user)
     @cart_items = @cart.cart_items.includes(:product)
-    @cart_total = @cart.total_price
+    @cart_total = @cart.calculate_total  # Updated method call
   end
 
   def add_to_cart
@@ -66,10 +66,11 @@ class CartsController < ApplicationController
         address_street: current_user.address_street,
         address_city: current_user.address_city,
         address_state: current_user.address_state,
-        address_zip_code: current_user.address_zip_code
+        address_zip_code: current_user.address_zip_code,
+        total_price: @cart.calculate_total  # Ensure total_price is set
       )
       @cart_items = @cart.cart_items.includes(:product)
-      @cart_total = @cart.total_price
+      @cart_total = @cart.calculate_total
     else
       flash[:alert] = 'Cart not found.'
       redirect_to root_path
@@ -80,39 +81,25 @@ class CartsController < ApplicationController
     @order = Order.new(order_params)
     @order.user = current_user
     @order.status = 'pending'
-
+  
     if current_user.cart && current_user.cart.cart_items.present?
-      cart_total = current_user.cart.total_price
+      cart_total = current_user.cart.calculate_total
       province = params[:order][:province]
       tax_details = TaxCalculator.calculate_total_price(cart_total, province)
-
-      # Debug log
-      Rails.logger.debug "Cart Total: #{cart_total}"
-      Rails.logger.debug "Tax Details: #{tax_details.inspect}"
-
+  
       # Ensure the tax details and subtotal are set
       @order.subtotal = cart_total
       @order.gst = tax_details[:gst]
       @order.pst = tax_details[:pst]
       @order.hst = tax_details[:hst]
-      @order.total_price = tax_details[:total_price]
-
-      # Debug log for order before saving
-      Rails.logger.debug "Order Details Before Save: #{@order.attributes.inspect}"
-
+      @order.total_price = tax_details[:total_price] || 0  # Handle potential nil values
+  
       if @order.save
-
-
-        respond_to do |format|
-          format.html { redirect_to order_path(@order), notice: 'Checkout completed successfully.' }
-          format.turbo_stream { render turbo_stream: turbo_stream.replace('cart', partial: 'orders/confirmation', locals: { order: @order }) }
-        end
+        # Redirect to the Stripe payment form
+        redirect_to order_path(@order)
       else
         flash[:alert] = "Order could not be processed. Errors: #{@order.errors.full_messages.join(', ')}"
-        respond_to do |format|
-          format.html { render :checkout }
-          format.turbo_stream { render turbo_stream: turbo_stream.replace('checkout', partial: 'carts/checkout', locals: { order: @order }) }
-        end
+        render :checkout
       end
     else
       flash[:alert] = "Your cart is empty or not found."

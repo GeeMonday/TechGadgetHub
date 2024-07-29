@@ -37,7 +37,7 @@ ActiveAdmin.register User do
       f.input :last_name
 
       f.inputs 'Address' do
-        f.fields_for :address, f.object.address || Address.new do |address_fields|
+        f.semantic_fields_for :address, f.object.address || Address.new do |address_fields|
           address_fields.input :street, label: 'Street'
           address_fields.input :city, label: 'City'
           address_fields.input :province, label: 'Province'
@@ -52,21 +52,27 @@ ActiveAdmin.register User do
   end
 
   controller do
-    before_action :set_user, only: [:edit, :update]
-    before_action :update_password, only: [:update]
-
-    private
-
-    def set_user
-      @user = User.find(params[:id])
-    end
-
-    def update_password
+    def update
       if params[:user][:password].blank?
-        # Skip updating the password if it's not provided
         params[:user].delete(:password)
         params[:user].delete(:password_confirmation)
       end
+      super
+    end
+
+    def create
+      @user = User.new(permitted_params[:user])
+      if @user.save
+        redirect_to admin_user_path(@user), notice: "User was successfully created."
+      else
+        render :new
+      end
+    end
+
+    private
+
+    def permitted_params
+      params.permit(user: [:username, :email, :first_name, :last_name, :password, :password_confirmation, address_attributes: [:id, :street, :city, :province, :postal_code, :_destroy]])
     end
   end
 

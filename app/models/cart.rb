@@ -22,6 +22,12 @@ class Cart < ApplicationRecord
   def total_price
     cart_items.joins(:product).sum('cart_items.quantity * products.price')
   end
+  
+  def calculate_total
+    cart_items.sum do |item|
+      (item.product.sale_price || item.product.price) * item.quantity
+    end
+  end
 
   def self.ransackable_associations(auth_object = nil)
     %w[user cart_items products]

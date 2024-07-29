@@ -8,9 +8,19 @@ class Order < ApplicationRecord
   validates :status, presence: true
   validates :total_price, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :subtotal, :gst, :pst, :hst, presence: true, numericality: { greater_than_or_equal_to: 0 }
+  validates :stripe_charge_id, presence: true, if: :paid?
 
   before_validation :set_defaults
 
+  def calculate_total
+    order_items.sum do |item|
+      (item.product.sale_price || item.product.price) * item.quantity
+    end
+  end
+
+  def total_price_in_cents
+    (total_price * 100).to_i
+  end
 
   private
 
@@ -22,6 +32,10 @@ class Order < ApplicationRecord
   def calculate_tax(tax_type)
     tax_rate = TaxRate.find_by(province_id: address&.province_id) # Use address's province_id
     tax_rate ? subtotal * (tax_rate.send(tax_type) / 100.0) : 0
+  end
+
+  def paid?
+    status == 'paid'
   end
 
   def self.ransackable_associations(auth_object = nil)

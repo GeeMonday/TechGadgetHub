@@ -1,6 +1,6 @@
+<!-- app/views/carts/checkout.html.erb -->
 <main class="container my-4">
   <h2>Checkout</h2>
-
   <%= form_with model: @order, url: complete_checkout_cart_path, local: true, data: { turbo: false } do |f| %>
     <div class="form-group">
       <%= f.label :address_street, 'Street Address' %>
@@ -23,39 +23,82 @@
     </div>
 
     <h3>Items in Your Cart</h3>
-    <table class="table">
-      <thead>
+<table class="table">
+  <thead>
+    <tr>
+      <th>Product</th>
+      <th>Quantity</th>
+      <th>Price</th>
+      <th>Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% if @cart_items.present? %>
+      <% @cart_items.each do |item| %>
         <tr>
-          <th>Product</th>
-          <th>Quantity</th>
-          <th>Price</th>
-          <th>Total</th>
+          <td><%= item.product.name %></td>
+          <td><%= item.quantity %></td>
+          <td><%= number_to_currency(item.product.sale_price || item.product.price) %></td>
+          <td><%= number_to_currency((item.product.sale_price || item.product.price) * item.quantity) %></td>
         </tr>
-      </thead>
-      <tbody>
-        <% if @cart_items.present? %>
-          <% @cart_items.each do |item| %>
-            <tr>
-              <td><%= item.product.name %></td>
-              <td><%= item.quantity %></td>
-              <td><%= number_to_currency(item.product.price) %></td>
-              <td><%= number_to_currency(item.product.price * item.quantity) %></td>
-            </tr>
-          <% end %>
-        <% else %>
-          <tr>
-            <td colspan="4">No items in cart</td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
+      <% end %>
+    <% else %>
+      <tr>
+        <td colspan="4">No items in cart</td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
 
     <div class="form-group">
       <strong>Total: <%= number_to_currency(@cart_total) %></strong>
     </div>
 
     <div class="form-group">
-      <%= f.submit 'Complete Order', class: 'btn btn-primary' %>
+      <%= f.submit 'Complete Order', class: 'btn btn-primary', id: 'complete-order-button' %>
     </div>
   <% end %>
+
+    <!-- Stripe Payment Form -->
+  <form action="/charges" method="post" id="payment-form">
+    <script src="https://checkout.stripe.com/checkout.js" class="stripe-button"
+            data-key="<%= Rails.application.credentials.dig(:stripe, :publishable_key) %>"
+            data-description="Order Payment"
+            data-amount="<%= @order.total_price_in_cents %>"
+            data-loc
 </main>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  var stripe = Stripe('<%= Rails.application.credentials.dig(:stripe, :publishable_key) %>');
+  var elements = stripe.elements();
+
+  var card = elements.create('card');
+  card.mount('#card-element');
+
+  var form = document.getElementById('payment-form');
+  form.addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    stripe.createToken(card).then(function(result) {
+      if (result.error) {
+        var errorElement = document.getElementById('card-errors');
+        errorElement.textContent = result.error.message;
+      } else {
+        stripeTokenHandler(result.token);
+      }
+    });
+  });
+
+  function stripeTokenHandler(token) {
+    var form = document.getElementById('payment-form');
+    var hiddenInput = document.createElement('input');
+    hiddenInput.setAttribute('type', 'hidden');
+    hiddenInput.setAttribute('name', 'stripeToken');
+    hiddenInput.setAttribute('value', token.id);
+    form.appendChild(hiddenInput);
+    form.submit();
+  }
+});
+</script>
