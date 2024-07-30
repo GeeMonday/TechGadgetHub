@@ -31,7 +31,7 @@ ActiveAdmin.register Order do
   filter :address_street, as: :string, label: 'Street'
   filter :address_city, as: :string, label: 'City'
   filter :address_postal_code, as: :string, label: 'Postal Code'
-  filter :address_province_id, as: :select, collection: -> { Province.pluck(:name, :id) }, label: 'Province'
+  filter :province_name, as: :string, label: 'Province'
   filter :status
   filter :subtotal
   filter :total_price

@@ -9,22 +9,22 @@
       </tr>
       <tr>
         <th>Street Address:</th>
-        <td><%= @order.address_street || 'Not specified' %></td>
+        <td><%= @order.address_street.presence || @order.address&.street || 'Not specified' %></td>
       </tr>
       <tr>
         <th>City:</th>
-        <td><%= @order.address_city || 'Not specified' %></td>
+        <td><%= @order.address_city.presence || @order.address&.city || 'Not specified' %></td>
       </tr>
       <tr>
         <th>Zip Code:</th>
-        <td><%= @order.address_zip_code || 'Not specified' %></td>
+        <td><%= @order.address_zip_code.presence || @order.address&.postal_code || 'Not specified' %></td>
       </tr>
       <tr>
         <th>Province:</th>
-        <td><%= @order.province || 'Not specified' %></td>
+        <td><%= @order.province.presence || @order.address&.province&.name || 'Not specified' %></td>
       </tr>
       <tr>
-        <th>total before taxes:</th>
+        <th>Total Before Taxes:</th>
         <td><%= number_to_currency(@order.subtotal) %></td>
       </tr>
       <tr>
@@ -40,7 +40,7 @@
         <td><%= number_to_currency(@order.hst) %></td>
       </tr>
       <tr>
-        <th>total after taxes:</th>
+        <th>Total After Taxes:</th>
         <td><%= number_to_currency(@order.total_price) %></td>
       </tr>
     </tbody>
@@ -57,20 +57,20 @@
       </tr>
     </thead>
     <tbody>
-    <% if @cart_items.present? %>
-      <% @cart_items.each do |item| %>
+      <% if @order.order_items.present? %>
+        <% @order.order_items.each do |item| %>
+          <tr>
+            <td><%= item.product.name %></td>
+            <td><%= item.quantity %></td>
+            <td><%= number_to_currency(item.product.sale_price || item.product.price) %></td>
+            <td><%= number_to_currency((item.product.sale_price || item.product.price) * item.quantity) %></td>
+          </tr>
+        <% end %>
+      <% else %>
         <tr>
-          <td><%= item.product.name %></td>
-          <td><%= item.quantity %></td>
-          <td><%= number_to_currency(item.product.sale_price || item.product.price) %></td>
-          <td><%= number_to_currency((item.product.sale_price || item.product.price) * item.quantity) %></td>
+          <td colspan="4">No items in order</td>
         </tr>
       <% end %>
-    <% else %>
-      <tr>
-        <td colspan="4">No items in cart</td>
-      </tr>
-    <% end %>
     </tbody>
   </table>
 

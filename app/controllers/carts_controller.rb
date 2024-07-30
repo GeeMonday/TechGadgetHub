@@ -4,7 +4,7 @@ class CartsController < ApplicationController
   def show
     @cart = current_user.cart || Cart.create(user: current_user)
     @cart_items = @cart.cart_items.includes(:product)
-    @cart_total = @cart.calculate_total  # Updated method call
+    @cart_total = @cart.calculate_total
   end
 
   def add_to_cart
@@ -43,7 +43,7 @@ class CartsController < ApplicationController
   def remove
     @cart = current_user.cart
     if @cart
-      cart_item_id = params[:id]  # Use params[:id] for removing specific item
+      cart_item_id = params[:id]
 
       item = @cart.cart_items.find_by(id: cart_item_id)
       if item
@@ -63,11 +63,11 @@ class CartsController < ApplicationController
     @cart = current_user.cart
     if @cart
       @order = Order.new(
-        address_street: current_user.address_street,
-        address_city: current_user.address_city,
-        address_state: current_user.address_state,
-        address_zip_code: current_user.address_zip_code,
-        total_price: @cart.calculate_total  # Ensure total_price is set
+        address_street: current_user.address.street,
+        address_city: current_user.address.city,
+        address_postal_code: current_user.address.postal_code,
+        province_id: current_user.address.province_id,
+        total_price: @cart.calculate_total
       )
       @cart_items = @cart.cart_items.includes(:product)
       @cart_total = @cart.calculate_total
@@ -81,21 +81,19 @@ class CartsController < ApplicationController
     @order = Order.new(order_params)
     @order.user = current_user
     @order.status = 'pending'
-  
+
     if current_user.cart && current_user.cart.cart_items.present?
       cart_total = current_user.cart.calculate_total
-      province = params[:order][:province]
+      province = Province.find(order_params[:province_id])
       tax_details = TaxCalculator.calculate_total_price(cart_total, province)
-  
-      # Ensure the tax details and subtotal are set
+
       @order.subtotal = cart_total
       @order.gst = tax_details[:gst]
       @order.pst = tax_details[:pst]
       @order.hst = tax_details[:hst]
-      @order.total_price = tax_details[:total_price] || 0  # Handle potential nil values
-  
+      @order.total_price = tax_details[:total_price]
+
       if @order.save
-        # Redirect to the Stripe payment form
         redirect_to order_path(@order)
       else
         flash[:alert] = "Order could not be processed. Errors: #{@order.errors.full_messages.join(', ')}"
@@ -110,6 +108,6 @@ class CartsController < ApplicationController
   private
 
   def order_params
-    params.require(:order).permit(:address_street, :address_city, :address_state, :address_zip_code, :province, :payment_method)
+    params.require(:order).permit(:address_street, :address_city, :address_postal_code, :province_id, :payment_method)
   end
 end

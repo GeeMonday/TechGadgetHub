@@ -208,10 +208,10 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_28_031648) do
     t.datetime "updated_at", null: false
     t.integer "user_id"
     t.datetime "remember_created_at"
-    t.string "address_street"
-    t.string "address_city"
-    t.string "address_state"
     t.string "address_zip_code"
+    t.string "address_state"
+    t.string "address_city"
+    t.string "address_street"
     t.index ["address_id"], name: "index_users_on_address_id"
     t.index ["user_id"], name: "index_users_on_user_id"
   end

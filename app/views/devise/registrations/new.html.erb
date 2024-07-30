@@ -22,26 +22,28 @@
   </div>
 
   <!-- Address fields -->
-  <div class="field">
-    <%= f.label :street %><br />
-    <%= f.text_field :address_street %>
-  </div>
-  
-  <div class="field">
-    <%= f.label :city %><br />
-    <%= f.text_field :address_city %>
-  </div>
-  
-  <div class="field">
-    <%= f.label :state %><br />
-    <%= f.text_field :address_state %>
-  </div>
-  
-  <div class="field">
-    <%= f.label :postal_code %><br />
-    <%= f.text_field :address_postal_code %>
-  </div>
-  
+  <%= f.fields_for :address, resource.address || resource.build_address do |address_fields| %>
+    <div class="field">
+      <%= address_fields.label :street %><br />
+      <%= address_fields.text_field :street %>
+    </div>
+
+    <div class="field">
+      <%= address_fields.label :city %><br />
+      <%= address_fields.text_field :city %>
+    </div>
+
+    <div class="field">
+      <%= address_fields.label :province %><br />
+      <%= address_fields.select :province_id, options_from_collection_for_select(Province.all, :id, :name), prompt: 'Select a Province' %>
+    </div>
+
+    <div class="field">
+      <%= address_fields.label :postal_code %><br />
+      <%= address_fields.text_field :postal_code %>
+    </div>
+  <% end %>
+
   <div class="field">
     <%= f.label :first_name %><br />
     <%= f.text_field :first_name %>

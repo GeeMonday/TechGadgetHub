@@ -10,12 +10,22 @@ class Order < ApplicationRecord
   validates :subtotal, :gst, :pst, :hst, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :stripe_charge_id, presence: true, if: :paid?
 
-  before_validation :set_defaults
+  before_validation :set_defaults, on: :create
 
-  def calculate_total
-    order_items.sum do |item|
-      (item.product.sale_price || item.product.price) * item.quantity
-    end
+  def subtotal
+    order_items.sum { |item| (item.product.sale_price || item.product.price) * item.quantity }
+  end
+
+  def calculate_tax(tax_type)
+    tax_rate = TaxRate.find_by(province_id: province_id) # Use the province_id directly
+    tax_rate ? subtotal * (tax_rate.send(tax_type) / 100.0) : 0
+  end
+
+  def calculate_totals
+    self.gst = calculate_tax(:gst)
+    self.pst = calculate_tax(:pst)
+    self.hst = calculate_tax(:hst)
+    self.total_price = subtotal + gst + pst + hst
   end
 
   def total_price_in_cents
@@ -27,11 +37,9 @@ class Order < ApplicationRecord
   def set_defaults
     self.status ||= 'pending'
     self.total_price ||= 0
-  end
-
-  def calculate_tax(tax_type)
-    tax_rate = TaxRate.find_by(province_id: address&.province_id) # Use address's province_id
-    tax_rate ? subtotal * (tax_rate.send(tax_type) / 100.0) : 0
+    self.gst ||= 0
+    self.pst ||= 0
+    self.hst ||= 0
   end
 
   def paid?
