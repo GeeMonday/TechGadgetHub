@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_07_28_031648) do
+ActiveRecord::Schema[7.1].define(version: 2024_07_30_163730) do
   create_table "active_admin_comments", force: :cascade do |t|
     t.string "namespace"
     t.text "body"
@@ -114,6 +114,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_28_031648) do
     t.decimal "price"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.decimal "product_price", precision: 10, scale: 2
     t.index ["order_id"], name: "index_order_items_on_order_id"
     t.index ["product_id"], name: "index_order_items_on_product_id"
   end
@@ -138,6 +139,9 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_28_031648) do
     t.string "address_postal_code"
     t.string "address_zip_code"
     t.string "stripe_charge_id"
+    t.decimal "gst_rate", precision: 5, scale: 2
+    t.decimal "pst_rate", precision: 5, scale: 2
+    t.decimal "hst_rate", precision: 5, scale: 2
   end
 
   create_table "payments", force: :cascade do |t|
@@ -208,10 +212,10 @@ ActiveRecord::Schema[7.1].define(version: 2024_07_28_031648) do
     t.datetime "updated_at", null: false
     t.integer "user_id"
     t.datetime "remember_created_at"
-    t.string "address_street"
-    t.string "address_city"
-    t.string "address_state"
     t.string "address_zip_code"
+    t.string "address_state"
+    t.string "address_city"
+    t.string "address_street"
     t.index ["address_id"], name: "index_users_on_address_id"
     t.index ["user_id"], name: "index_users_on_user_id"
   end

@@ -1,4 +1,3 @@
-# app/controllers/orders_controller.rb
 class OrdersController < ApplicationController
   before_action :set_order, only: [:show]
 
@@ -14,12 +13,11 @@ class OrdersController < ApplicationController
 
   def create
     @order = Order.new(order_params)
-    @order.total = calculate_total
+    @order.subtotal = @order.calculate_total
+    @order.calculate_totals
 
     if @order.save
-      # Add cart_items to the order
       add_cart_items_to_order
-
       session[:cart] = nil
       redirect_to order_path(@order), notice: 'Order was successfully created.'
     else
@@ -29,8 +27,6 @@ class OrdersController < ApplicationController
   end
 
   def show
-    # @order is set by the before_action :set_order
-    # Ensure that cart_items and associated products are included
     @cart_items = @order.order_items.includes(:product)
   end
 
@@ -44,21 +40,13 @@ class OrdersController < ApplicationController
   end
 
   def order_params
-    params.require(:order).permit(:address_street, :address_city, :address_zip_code, :province_id)
-  end
-
-  def calculate_total
-    subtotal = @order.cart_items.sum { |item| item.quantity * item.product.price }
-    tax_rate = TaxRate.find_by(province_id: @order.province_id)
-    tax = (subtotal * (tax_rate.gst + tax_rate.pst + tax_rate.hst) / 100)
-    total = subtotal + tax
-    total
+    params.require(:order).permit(:address_street, :address_city, :address_postal_code, :province_id, :status, order_items_attributes: [:id, :product_id, :quantity, :product_price, :_destroy])
   end
 
   def add_cart_items_to_order
     session[:cart].each do |product_id, quantity|
       product = Product.find(product_id)
-      @order.cart_items.create(product: product, quantity: quantity)
+      @order.order_items.create(product: product, quantity: quantity, product_price: product.sale_price || product.price)
     end
   end
 end

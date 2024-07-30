@@ -37,14 +37,14 @@
           </h5>
           <% if product.on_sale %>
             <p>
-              <strong>Sale Price:</strong> <%= number_to_currency(product.sale_price) %> 
+            Sale Price: <strong><%= number_to_currency(product.sale_price).html_safe %></strong>
               <small>
-                <del><%= number_to_currency(product.price) %></del>
+                was <del><%= number_to_currency(product.price) %></del>
               </small>
               <br>
               <span class="text-danger">
-                <%= "#{percentage_off(product.price, product.sale_price)}% off" %>
-              </span>
+  Limited Time Deal: <strong><%= "#{number_to_percentage(percentage_off(product.price, product.sale_price), precision: 0)} off" %></strong>
+</span>
             </p>
           <% else %>
             <p><%= number_to_currency(product.price) %></p>

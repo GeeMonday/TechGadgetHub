@@ -7,5 +7,5 @@ class CreateOrders < ActiveRecord::Migration[7.1]
       t.string :status
       t.timestamps
     end
-  end
+  end 
 end
