@@ -11,7 +11,7 @@ class Order < ApplicationRecord
   validates :stripe_charge_id, presence: true, if: :paid?
 
   before_validation :set_defaults, on: :create
-  before_save :set_tax_rates
+  before_save :calculate_totals, if: :province_id_changed?
 
   def subtotal
     order_items.sum { |item| item.product_price * item.quantity }
