@@ -1,6 +1,8 @@
 <main class="container my-4">
   <h2>Checkout</h2>
-  <%= form_with model: @order, url: complete_checkout_cart_path, local: true, data: { turbo: false } do |f| %>
+
+  <!-- Order Form -->
+  <%= form_with model: @order, url: complete_checkout_cart_path, local: true, id: 'order-form' do |f| %>
     <div class="form-group">
       <%= f.label :address_street, 'Street Address' %>
       <%= f.text_field :address_street, class: 'form-control', value: @order.address_street.presence || current_user.address.street, required: true %>
@@ -54,18 +56,22 @@
     </div>
 
     <div class="form-group">
-      <%= f.submit 'Complete Order', class: 'btn btn-primary', id: 'complete-order-button' %>
+      <%= f.submit 'Complete Order', class: 'btn btn-primary' %>
     </div>
   <% end %>
 
-  <!-- Stripe Payment Form -->
-  <form action="/charges" method="post" id="payment-form">
-    <script src="https://checkout.stripe.com/checkout.js" class="stripe-button"
-            data-key="<%= Rails.application.credentials.dig(:stripe, :publishable_key) %>"
-            data-description="Order Payment"
-            data-amount="<%= @order.total_price_in_cents %>">
-    </script>
-  </form>
+  <!-- Payment Form -->
+  <div id="payment-container" style="display: none;">
+    <h3>Payment</h3>
+    <form action="/charges" method="post" id="payment-form">
+      <div id="card-element">
+        <!-- A Stripe Element will be inserted here. -->
+      </div>
+      <div id="card-errors" role="alert"></div>
+      <input type="hidden" name="orderId" id="order-id">
+      <button type="submit" class="btn btn-primary">Pay Now</button>
+    </form>
+  </div>
 </main>
 
 <script src="https://js.stripe.com/v3/"></script>
@@ -73,12 +79,44 @@
 document.addEventListener("DOMContentLoaded", function() {
   var stripe = Stripe('<%= Rails.application.credentials.dig(:stripe, :publishable_key) %>');
   var elements = stripe.elements();
-
   var card = elements.create('card');
   card.mount('#card-element');
 
-  var form = document.getElementById('payment-form');
-  form.addEventListener('submit', function(event) {
+  var orderForm = document.getElementById('order-form');
+  var paymentContainer = document.getElementById('payment-container');
+
+  orderForm.addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    var formData = new FormData(orderForm);
+
+    fetch(orderForm.action, {
+      method: 'POST',
+      headers: {
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
+        'Accept': 'application/json'
+      },
+      body: formData
+    }).then(function(response) {
+      return response.json();
+    }).then(function(data) {
+      console.log('Response Data:', data); // For debugging
+      if (data.success) {
+        // Hide the order form and show the payment form
+        orderForm.style.display = 'none';
+        paymentContainer.style.display = 'block';
+        // Set the order ID in the hidden input field
+        document.getElementById('order-id').value = data.orderId;
+      } else {
+        alert('Order could not be processed: ' + data.error);
+      }
+    }).catch(function(error) {
+      console.error('Error:', error);
+    });
+  });
+
+  var paymentForm = document.getElementById('payment-form');
+  paymentForm.addEventListener('submit', function(event) {
     event.preventDefault();
 
     stripe.createToken(card).then(function(result) {
@@ -98,6 +136,14 @@ document.addEventListener("DOMContentLoaded", function() {
     hiddenInput.setAttribute('name', 'stripeToken');
     hiddenInput.setAttribute('value', token.id);
     form.appendChild(hiddenInput);
+
+    // Add order ID to the payment form
+    var orderIdInput = document.createElement('input');
+    orderIdInput.setAttribute('type', 'hidden');
+    orderIdInput.setAttribute('name', 'orderId');
+    orderIdInput.setAttribute('value', document.getElementById('order-id').value);
+    form.appendChild(orderIdInput);
+
     form.submit();
   }
 });

@@ -15,6 +15,8 @@ class OrdersController < ApplicationController
     @order = Order.new(order_params)
     @order.subtotal = @order.calculate_total
     @order.calculate_totals
+    @order.subtotal = @order.calculate_total
+    @order.calculate_totals
 
     if @order.save
       add_cart_items_to_order

@@ -11,14 +11,21 @@ class Order < ApplicationRecord
   validates :stripe_charge_id, presence: true, if: :paid?
 
   before_validation :set_defaults, on: :create
+  before_save :set_tax_rates
 
   def subtotal
-    order_items.sum { |item| (item.product.sale_price || item.product.price) * item.quantity }
+    order_items.sum { |item| item.product_price * item.quantity }
   end
 
   def calculate_tax(tax_type)
-    tax_rate = TaxRate.find_by(province_id: province_id) # Use the province_id directly
-    tax_rate ? subtotal * (tax_rate.send(tax_type) / 100.0) : 0
+    case tax_type
+    when :gst
+      gst_rate ? subtotal * (gst_rate / 100.0) : 0
+    when :pst
+      pst_rate ? subtotal * (pst_rate / 100.0) : 0
+    when :hst
+      hst_rate ? subtotal * (hst_rate / 100.0) : 0
+    end
   end
 
   def calculate_totals
@@ -42,6 +49,15 @@ class Order < ApplicationRecord
     self.hst ||= 0
   end
 
+  def set_tax_rates
+    tax_rate = TaxRate.find_by(province_id: province_id)
+    if tax_rate
+      self.gst_rate = tax_rate.gst
+      self.pst_rate = tax_rate.pst
+      self.hst_rate = tax_rate.hst
+    end
+  end
+
   def paid?
     status == 'paid'
   end
@@ -51,6 +67,6 @@ class Order < ApplicationRecord
   end
 
   def self.ransackable_attributes(auth_object = nil)
-    %w[id user_id created_at updated_at status total_price subtotal gst pst hst address_street address_city address_postal_code province_name]
+    %w[id user_id created_at updated_at status total_price subtotal gst pst hst gst_rate pst_rate hst_rate address_street address_city address_postal_code province_name]
   end
 end
