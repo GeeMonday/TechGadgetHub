@@ -4,16 +4,16 @@ ActiveAdmin.register Order do
     id_column
     column :user
     column 'Street' do |order|
-      order.address&.street
+      order.address_street
     end
     column 'City' do |order|
-      order.address&.city
+      order.address_city
     end
     column 'Postal Code' do |order|
-      order.address&.postal_code
+      order.address_postal_code
     end
     column 'Province' do |order|
-      order.address&.province&.name
+      order.province&.name
     end
     column :status
     column :subtotal
@@ -77,16 +77,16 @@ ActiveAdmin.register Order do
       row :created_at
       row :updated_at
       row 'Street' do
-        order.address&.street
+        order.address_street
       end
       row 'City' do
-        order.address&.city
+        order.address_city
       end
       row 'Postal Code' do
-        order.address&.postal_code
+        order.address_postal_code
       end
       row 'Province' do
-        order.address&.province&.name
+        order.province&.name
       end
       row 'Customer' do
         link_to order.user.username, admin_user_path(order.user) if order.user

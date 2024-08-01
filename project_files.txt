@@ -8,7 +8,12 @@ class ApplicationController < ActionController::Base
     devise_parameter_sanitizer.permit(:sign_up, keys: [
       :username, :email, :password, :password_confirmation,
       :first_name, :last_name,
-      address_attributes: [:street, :city, :state, :postal_code]
+      address_attributes: [:street, :city, :province_id, :postal_code]
+    ])
+    devise_parameter_sanitizer.permit(:account_update, keys: [
+      :username, :email, :password, :password_confirmation, :current_password,
+      :first_name, :last_name,
+      address_attributes: [:street, :city, :province_id, :postal_code]
     ])
   end
 end
@@ -102,9 +107,8 @@ end
 
 
 ### app/controllers/orders_controller.rb ###
-# app/controllers/orders_controller.rb
 class OrdersController < ApplicationController
-  before_action :set_order, only: [:show]
+  before_action :set_order, only: [:show, :update]
 
   def index
     @orders = current_user.orders
@@ -118,12 +122,13 @@ class OrdersController < ApplicationController
 
   def create
     @order = Order.new(order_params)
-    @order.total = calculate_total
+    @order.subtotal = @order.calculate_total
+    @order.calculate_totals
+    @order.subtotal = @order.calculate_total
+    @order.calculate_totals
 
     if @order.save
-      # Add cart_items to the order
       add_cart_items_to_order
-
       session[:cart] = nil
       redirect_to order_path(@order), notice: 'Order was successfully created.'
     else
@@ -133,9 +138,16 @@ class OrdersController < ApplicationController
   end
 
   def show
-    # @order is set by the before_action :set_order
-    # Ensure that cart_items and associated products are included
     @cart_items = @order.order_items.includes(:product)
+  end
+
+  def update
+    if @order.update(order_params)
+      redirect_to @order, notice: 'Order was successfully updated.'
+    else
+      flash[:alert] = 'Order could not be updated. Please try again.'
+      render :edit
+    end
   end
 
   private
@@ -148,21 +160,17 @@ class OrdersController < ApplicationController
   end
 
   def order_params
-    params.require(:order).permit(:address_street, :address_city, :address_zip_code, :province_id)
-  end
-
-  def calculate_total
-    subtotal = @order.cart_items.sum { |item| item.quantity * item.product.price }
-    tax_rate = TaxRate.find_by(province_id: @order.province_id)
-    tax = (subtotal * (tax_rate.gst + tax_rate.pst + tax_rate.hst) / 100)
-    total = subtotal + tax
-    total
+    params.require(:order).permit(
+      :address_street, :address_city, :address_postal_code, :province_id, :status,
+      :subtotal, :gst, :pst, :hst, :total_price,
+      order_items_attributes: [:id, :product_id, :quantity, :price, :_destroy]
+    )
   end
 
   def add_cart_items_to_order
     session[:cart].each do |product_id, quantity|
       product = Product.find(product_id)
-      @order.cart_items.create(product: product, quantity: quantity)
+      @order.order_items.create(product: product, quantity: quantity, price: product.price)
     end
   end
 end
@@ -231,8 +239,16 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   # Configure the permitted parameters for sign up and account update
   def configure_permitted_parameters
-    devise_parameter_sanitizer.permit(:sign_up, keys: [:username, :email, :password, :password_confirmation, :first_name, :last_name, address_attributes: [:street, :city, :state, :postal_code]])
-    devise_parameter_sanitizer.permit(:account_update, keys: [:username, :email, :password, :password_confirmation, :current_password, :first_name, :last_name, address_attributes: [:street, :city, :state, :postal_code]])
+    devise_parameter_sanitizer.permit(:sign_up, keys: [
+      :username, :email, :password, :password_confirmation, 
+      :first_name, :last_name, 
+      address_attributes: [:street, :city, :province_id, :postal_code]
+    ])
+    devise_parameter_sanitizer.permit(:account_update, keys: [
+      :username, :email, :password, :password_confirmation, :current_password,
+      :first_name, :last_name, 
+      address_attributes: [:street, :city, :province_id, :postal_code]
+    ])
   end
 end
 
@@ -245,7 +261,9 @@ class CartsController < ApplicationController
   def show
     @cart = current_user.cart || Cart.create(user: current_user)
     @cart_items = @cart.cart_items.includes(:product)
-    @cart_total = @cart.calculate_total  # Updated method call
+    @cart_total = @cart.calculate_total
+      # Debugging the sort condition
+  Rails.logger.debug "Sorting condition: #{Province.order(:name).to_sql}"
   end
 
   def add_to_cart
@@ -284,7 +302,7 @@ class CartsController < ApplicationController
   def remove
     @cart = current_user.cart
     if @cart
-      cart_item_id = params[:id]  # Use params[:id] for removing specific item
+      cart_item_id = params[:id]
 
       item = @cart.cart_items.find_by(id: cart_item_id)
       if item
@@ -304,14 +322,15 @@ class CartsController < ApplicationController
     @cart = current_user.cart
     if @cart
       @order = Order.new(
-        address_street: current_user.address_street,
-        address_city: current_user.address_city,
-        address_state: current_user.address_state,
-        address_zip_code: current_user.address_zip_code,
-        total_price: @cart.calculate_total  # Ensure total_price is set
+        address_street: current_user.address.street,
+        address_city: current_user.address.city,
+        address_postal_code: current_user.address.postal_code,
+        province_id: current_user.address.province_id,
+        total_price: @cart.calculate_total
       )
       @cart_items = @cart.cart_items.includes(:product)
       @cart_total = @cart.calculate_total
+      @provinces = Province.all.order(:name) # Explicitly order provinces by name
     else
       flash[:alert] = 'Cart not found.'
       redirect_to root_path
@@ -322,21 +341,19 @@ class CartsController < ApplicationController
     @order = Order.new(order_params)
     @order.user = current_user
     @order.status = 'pending'
-  
+
     if current_user.cart && current_user.cart.cart_items.present?
       cart_total = current_user.cart.calculate_total
-      province = params[:order][:province]
+      province = Province.find(order_params[:province_id])
       tax_details = TaxCalculator.calculate_total_price(cart_total, province)
-  
-      # Ensure the tax details and subtotal are set
+
       @order.subtotal = cart_total
       @order.gst = tax_details[:gst]
       @order.pst = tax_details[:pst]
       @order.hst = tax_details[:hst]
-      @order.total_price = tax_details[:total_price] || 0  # Handle potential nil values
-  
+      @order.total_price = tax_details[:total_price]
+
       if @order.save
-        # Redirect to the Stripe payment form
         redirect_to order_path(@order)
       else
         flash[:alert] = "Order could not be processed. Errors: #{@order.errors.full_messages.join(', ')}"
@@ -351,7 +368,7 @@ class CartsController < ApplicationController
   private
 
   def order_params
-    params.require(:order).permit(:address_street, :address_city, :address_state, :address_zip_code, :province, :payment_method)
+    params.require(:order).permit(:address_street, :address_city, :address_postal_code, :province_id, :payment_method)
   end
 end
 
@@ -379,12 +396,12 @@ class Address < ApplicationRecord
   belongs_to :province
 
   # Validations
-  validates :street, :city, :province, :postal_code, :state, presence: true
+  validates :street, :city, :province_id, :postal_code, presence: true
   validates :postal_code, length: { is: 7 }, format: { with: /\A[A-Z]\d[A-Z] \d[A-Z]\d\z/, message: 'must be in the format A1A 1A1' }
 
   # Ransackable attributes
   def self.ransackable_attributes(auth_object = nil)
-    %w[street city postal_code province_id state]
+    %w[street city postal_code province_id]
   end
 
   # Ransackable associations
@@ -491,7 +508,19 @@ class OrderItem < ApplicationRecord
   belongs_to :product
 
   validates :quantity, presence: true, numericality: { greater_than: 0 }
-  validates :price, presence: true, numericality: { greater_than: 0 }
+  validates :product_price, presence: true, numericality: { greater_than: 0 }
+
+  before_save :set_product_price
+
+  def total_price
+    product_price * quantity
+  end
+
+  private
+
+  def set_product_price
+    self.product_price = product.sale_price || product.price
+  end
 end
 
 
@@ -653,6 +682,7 @@ class StaticPage < ApplicationRecord
 ### app/models/order.rb ###
 class Order < ApplicationRecord
   belongs_to :user
+  belongs_to :province # Ensure you have a belongs_to association with Province
   has_one :address, through: :user
   has_many :order_items, dependent: :destroy
   accepts_nested_attributes_for :order_items, allow_destroy: true
@@ -663,12 +693,20 @@ class Order < ApplicationRecord
   validates :subtotal, :gst, :pst, :hst, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :stripe_charge_id, presence: true, if: :paid?
 
-  before_validation :set_defaults
+  before_validation :set_defaults, on: :create
+  before_save :calculate_totals, if: :province_id_changed?
 
-  def calculate_total
-    order_items.sum do |item|
-      (item.product.sale_price || item.product.price) * item.quantity
-    end
+  def calculate_subtotal
+    self.subtotal = order_items.sum { |item| item.product_price * item.quantity }
+  end
+
+  def calculate_totals
+    calculate_subtotal
+    tax_details = TaxCalculator.calculate_total_price(self.subtotal, self.province.code)
+    self.gst = tax_details[:gst]
+    self.pst = tax_details[:pst]
+    self.hst = tax_details[:hst]
+    self.total_price = tax_details[:total_price]
   end
 
   def total_price_in_cents
@@ -680,11 +718,9 @@ class Order < ApplicationRecord
   def set_defaults
     self.status ||= 'pending'
     self.total_price ||= 0
-  end
-
-  def calculate_tax(tax_type)
-    tax_rate = TaxRate.find_by(province_id: address&.province_id) # Use address's province_id
-    tax_rate ? subtotal * (tax_rate.send(tax_type) / 100.0) : 0
+    self.gst ||= 0
+    self.pst ||= 0
+    self.hst ||= 0
   end
 
   def paid?
@@ -696,7 +732,7 @@ class Order < ApplicationRecord
   end
 
   def self.ransackable_attributes(auth_object = nil)
-    %w[id user_id created_at updated_at status total_price subtotal gst pst hst address_street address_city address_postal_code province_name]
+    %w[id user_id created_at updated_at status total_price subtotal gst pst hst address_street address_city address_postal_code province_id]
   end
 end
 
@@ -971,7 +1007,7 @@ end
 
 ### app/admin/users.rb ###
 ActiveAdmin.register User do
-  permit_params :username, :email, :first_name, :last_name, :password, :password_confirmation, address_attributes: [:id, :street, :city, :province, :postal_code, :_destroy]
+  permit_params :username, :email, :first_name, :last_name, :password, :password_confirmation, address_attributes: [:id, :street, :city, :province_id, :postal_code, :_destroy]
 
   index do
     selectable_column
@@ -987,7 +1023,7 @@ ActiveAdmin.register User do
       user.address.present? ? user.address.city : "No address"
     end
     column :address_province do |user|
-      user.address.present? ? user.address.province : "No address"
+      user.address.present? ? user.address.province.name : "No address"
     end
     column :address_postal_code do |user|
       user.address.present? ? user.address.postal_code : "No address"
@@ -1007,28 +1043,36 @@ ActiveAdmin.register User do
       f.input :email
       f.input :first_name
       f.input :last_name
-
-      f.inputs 'Address' do
-        f.semantic_fields_for :address, f.object.address || Address.new do |address_fields|
-          address_fields.input :street, label: 'Street'
-          address_fields.input :city, label: 'City'
-          address_fields.input :province, label: 'Province'
-          address_fields.input :postal_code, label: 'Postal Code'
-        end
-      end
-
       f.input :password, hint: 'Leave blank if you do not want to change the password'
       f.input :password_confirmation, hint: 'Leave blank if you do not want to change the password'
     end
+
+    f.inputs 'Address' do
+      f.semantic_fields_for :address do |address_fields|
+        address_fields.input :street, label: 'Street'
+        address_fields.input :city, label: 'City'
+        address_fields.input :province_id, as: :select, collection: Province.all.collect { |p| [p.name, p.id] }, label: 'Province'
+        address_fields.input :postal_code, label: 'Postal Code'
+      end
+    end
+
     f.actions
   end
 
   controller do
     def update
+      # If password fields are blank, remove them from the params
       if params[:user][:password].blank?
         params[:user].delete(:password)
         params[:user].delete(:password_confirmation)
       end
+
+      # Handle address attributes properly
+      # Ensure that address attributes are updated correctly
+      if params[:user][:address_attributes].present?
+        params[:user][:address_attributes].delete(:_destroy) if params[:user][:address_attributes][:id].blank?
+      end
+
       super
     end
 
@@ -1044,7 +1088,7 @@ ActiveAdmin.register User do
     private
 
     def permitted_params
-      params.permit(user: [:username, :email, :first_name, :last_name, :password, :password_confirmation, address_attributes: [:id, :street, :city, :province, :postal_code, :_destroy]])
+      params.require(:user).permit(:username, :email, :first_name, :last_name, :password, :password_confirmation, address_attributes: [:id, :street, :city, :province_id, :postal_code, :_destroy])
     end
   end
 
@@ -1087,7 +1131,7 @@ ActiveAdmin.register Order do
   filter :address_street, as: :string, label: 'Street'
   filter :address_city, as: :string, label: 'City'
   filter :address_postal_code, as: :string, label: 'Postal Code'
-  filter :address_province_id, as: :select, collection: -> { Province.pluck(:name, :id) }, label: 'Province'
+  filter :province_name, as: :string, label: 'Province'
   filter :status
   filter :subtotal
   filter :total_price
@@ -1111,7 +1155,7 @@ ActiveAdmin.register Order do
     end
 
     f.inputs 'Order Items' do
-      f.has_many :order_items, allow_destroy: true, new_record: true do |oi|
+      f.has_many :order_ites, allow_destroy: true, new_record: true do |oi|
         oi.input :product
         oi.input :quantity
         oi.input :price, as: :number, min: 0
@@ -1211,7 +1255,12 @@ module ApplicationHelper
       percentage = ((original_price - sale_price) / original_price) * 100
       percentage.round(2)
     end
+
+      def percentage_off(original_price, sale_price)
+        return 0 if original_price.zero?
     
+        ((original_price - sale_price) / original_price * 100).round
+      end
   end
 
 
@@ -1364,74 +1413,80 @@ class TaxCalculator
 
 
 ### app/views/carts/checkout.html.erb ###
-<!-- app/views/carts/checkout.html.erb -->
 <main class="container my-4">
   <h2>Checkout</h2>
-  <%= form_with model: @order, url: complete_checkout_cart_path, local: true, data: { turbo: false } do |f| %>
+
+  <!-- Order Form -->
+  <%= form_with model: @order, url: complete_checkout_cart_path, local: true, id: 'order-form' do |f| %>
     <div class="form-group">
       <%= f.label :address_street, 'Street Address' %>
-      <%= f.text_field :address_street, class: 'form-control', value: current_user.address_street, required: true %>
+      <%= f.text_field :address_street, class: 'form-control', value: @order.address_street.presence || current_user.address.street, required: true %>
     </div>
 
     <div class="form-group">
       <%= f.label :address_city, 'City' %>
-      <%= f.text_field :address_city, class: 'form-control', value: current_user.address_city, required: true %>
+      <%= f.text_field :address_city, class: 'form-control', value: @order.address_city.presence || current_user.address.city, required: true %>
     </div>
 
     <div class="form-group">
-      <%= f.label :address_zip_code, 'Zip Code' %>
-      <%= f.text_field :address_zip_code, class: 'form-control', value: current_user.address_zip_code, required: true %>
+      <%= f.label :address_postal_code, 'Postal Code' %>
+      <%= f.text_field :address_postal_code, class: 'form-control', value: @order.address_postal_code.presence || current_user.address.postal_code, required: true, pattern: "[A-Za-z]\\d[A-Za-z] \\d[A-Za-z]\\d", title: "Postal code must be in the format A1A 1A1" %>
     </div>
 
     <div class="form-group">
-      <%= f.label :province, 'Province' %>
-      <%= f.select :province, options_for_select(provinces_list), { include_blank: 'Select Province' }, class: 'form-control', required: true %>
+      <%= f.label :province_id, 'Province' %>
+      <%= f.collection_select :province_id, Province.all, :id, :to_s, { include_blank: 'Select Province' }, class: 'form-control', required: true %>
     </div>
 
     <h3>Items in Your Cart</h3>
-<table class="table">
-  <thead>
-    <tr>
-      <th>Product</th>
-      <th>Quantity</th>
-      <th>Price</th>
-      <th>Total</th>
-    </tr>
-  </thead>
-  <tbody>
-    <% if @cart_items.present? %>
-      <% @cart_items.each do |item| %>
+    <table class="table">
+      <thead>
         <tr>
-          <td><%= item.product.name %></td>
-          <td><%= item.quantity %></td>
-          <td><%= number_to_currency(item.product.sale_price || item.product.price) %></td>
-          <td><%= number_to_currency((item.product.sale_price || item.product.price) * item.quantity) %></td>
+          <th>Product</th>
+          <th>Quantity</th>
+          <th>Price</th>
+          <th>Total</th>
         </tr>
-      <% end %>
-    <% else %>
-      <tr>
-        <td colspan="4">No items in cart</td>
-      </tr>
-    <% end %>
-  </tbody>
-</table>
+      </thead>
+      <tbody>
+        <% if @cart_items.present? %>
+          <% @cart_items.each do |item| %>
+            <tr>
+              <td><%= item.product.name %></td>
+              <td><%= item.quantity %></td>
+              <td><%= number_to_currency(item.product.sale_price || item.product.price) %></td>
+              <td><%= number_to_currency((item.product.sale_price || item.product.price) * item.quantity) %></td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="4">No items in cart</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
 
     <div class="form-group">
       <strong>Total: <%= number_to_currency(@cart_total) %></strong>
     </div>
 
     <div class="form-group">
-      <%= f.submit 'Complete Order', class: 'btn btn-primary', id: 'complete-order-button' %>
+      <%= f.submit 'Complete Order', class: 'btn btn-primary' %>
     </div>
   <% end %>
 
-    <!-- Stripe Payment Form -->
-  <form action="/charges" method="post" id="payment-form">
-    <script src="https://checkout.stripe.com/checkout.js" class="stripe-button"
-            data-key="<%= Rails.application.credentials.dig(:stripe, :publishable_key) %>"
-            data-description="Order Payment"
-            data-amount="<%= @order.total_price_in_cents %>"
-            data-loc
+  <!-- Payment Form -->
+  <div id="payment-container" style="display: none;">
+    <h3>Payment</h3>
+    <form action="/charges" method="post" id="payment-form">
+      <div id="card-element">
+        <!-- A Stripe Element will be inserted here. -->
+      </div>
+      <div id="card-errors" role="alert"></div>
+      <input type="hidden" name="orderId" id="order-id">
+      <button type="submit" class="btn btn-primary">Pay Now</button>
+    </form>
+  </div>
 </main>
 
 <script src="https://js.stripe.com/v3/"></script>
@@ -1439,12 +1494,44 @@ class TaxCalculator
 document.addEventListener("DOMContentLoaded", function() {
   var stripe = Stripe('<%= Rails.application.credentials.dig(:stripe, :publishable_key) %>');
   var elements = stripe.elements();
-
   var card = elements.create('card');
   card.mount('#card-element');
 
-  var form = document.getElementById('payment-form');
-  form.addEventListener('submit', function(event) {
+  var orderForm = document.getElementById('order-form');
+  var paymentContainer = document.getElementById('payment-container');
+
+  orderForm.addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    var formData = new FormData(orderForm);
+
+    fetch(orderForm.action, {
+      method: 'POST',
+      headers: {
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
+        'Accept': 'application/json'
+      },
+      body: formData
+    }).then(function(response) {
+      return response.json();
+    }).then(function(data) {
+      console.log('Response Data:', data); // For debugging
+      if (data.success) {
+        // Hide the order form and show the payment form
+        orderForm.style.display = 'none';
+        paymentContainer.style.display = 'block';
+        // Set the order ID in the hidden input field
+        document.getElementById('order-id').value = data.orderId;
+      } else {
+        alert('Order could not be processed: ' + data.error);
+      }
+    }).catch(function(error) {
+      console.error('Error:', error);
+    });
+  });
+
+  var paymentForm = document.getElementById('payment-form');
+  paymentForm.addEventListener('submit', function(event) {
     event.preventDefault();
 
     stripe.createToken(card).then(function(result) {
@@ -1464,6 +1551,14 @@ document.addEventListener("DOMContentLoaded", function() {
     hiddenInput.setAttribute('name', 'stripeToken');
     hiddenInput.setAttribute('value', token.id);
     form.appendChild(hiddenInput);
+
+    // Add order ID to the payment form
+    var orderIdInput = document.createElement('input');
+    orderIdInput.setAttribute('type', 'hidden');
+    orderIdInput.setAttribute('name', 'orderId');
+    orderIdInput.setAttribute('value', document.getElementById('order-id').value);
+    form.appendChild(orderIdInput);
+
     form.submit();
   }
 });
@@ -1606,14 +1701,14 @@ document.addEventListener("DOMContentLoaded", function() {
           </h5>
           <% if product.on_sale %>
             <p>
-              <strong>Sale Price:</strong> <%= number_to_currency(product.sale_price) %> 
+            Sale Price: <strong><%= number_to_currency(product.sale_price).html_safe %></strong>
               <small>
-                <del><%= number_to_currency(product.price) %></del>
+                was <del><%= number_to_currency(product.price) %></del>
               </small>
               <br>
               <span class="text-danger">
-                <%= "#{percentage_off(product.price, product.sale_price)}% off" %>
-              </span>
+  Limited Time Deal: <strong><%= "#{number_to_percentage(percentage_off(product.price, product.sale_price), precision: 0)} off" %></strong>
+</span>
             </p>
           <% else %>
             <p><%= number_to_currency(product.price) %></p>
@@ -1904,26 +1999,28 @@ document.addEventListener("DOMContentLoaded", function() {
   </div>
 
   <!-- Address fields -->
-  <div class="field">
-    <%= f.label :street %><br />
-    <%= f.text_field :address_street %>
-  </div>
-  
-  <div class="field">
-    <%= f.label :city %><br />
-    <%= f.text_field :address_city %>
-  </div>
-  
-  <div class="field">
-    <%= f.label :state %><br />
-    <%= f.text_field :address_state %>
-  </div>
-  
-  <div class="field">
-    <%= f.label :postal_code %><br />
-    <%= f.text_field :address_postal_code %>
-  </div>
-  
+  <%= f.fields_for :address, resource.address || resource.build_address do |address_fields| %>
+    <div class="field">
+      <%= address_fields.label :street %><br />
+      <%= address_fields.text_field :street %>
+    </div>
+
+    <div class="field">
+      <%= address_fields.label :city %><br />
+      <%= address_fields.text_field :city %>
+    </div>
+
+    <div class="field">
+      <%= address_fields.label :province %><br />
+      <%= address_fields.select :province_id, options_from_collection_for_select(Province.all, :id, :name), prompt: 'Select a Province' %>
+    </div>
+
+    <div class="field">
+      <%= address_fields.label :postal_code %><br />
+      <%= address_fields.text_field :postal_code %>
+    </div>
+  <% end %>
+
   <div class="field">
     <%= f.label :first_name %><br />
     <%= f.text_field :first_name %>
@@ -2234,22 +2331,22 @@ document.addEventListener("DOMContentLoaded", function() {
       </tr>
       <tr>
         <th>Street Address:</th>
-        <td><%= @order.address_street || 'Not specified' %></td>
+        <td><%= @order.address_street.presence || @order.address&.street || 'Not specified' %></td>
       </tr>
       <tr>
         <th>City:</th>
-        <td><%= @order.address_city || 'Not specified' %></td>
+        <td><%= @order.address_city.presence || @order.address&.city || 'Not specified' %></td>
       </tr>
       <tr>
         <th>Zip Code:</th>
-        <td><%= @order.address_zip_code || 'Not specified' %></td>
+        <td><%= @order.address_zip_code.presence || @order.address&.postal_code || 'Not specified' %></td>
       </tr>
       <tr>
         <th>Province:</th>
-        <td><%= @order.province || 'Not specified' %></td>
+        <td><%= @order.province.presence || @order.address&.province&.name || 'Not specified' %></td>
       </tr>
       <tr>
-        <th>total before taxes:</th>
+        <th>Total Before Taxes:</th>
         <td><%= number_to_currency(@order.subtotal) %></td>
       </tr>
       <tr>
@@ -2265,7 +2362,7 @@ document.addEventListener("DOMContentLoaded", function() {
         <td><%= number_to_currency(@order.hst) %></td>
       </tr>
       <tr>
-        <th>total after taxes:</th>
+        <th>Total After Taxes:</th>
         <td><%= number_to_currency(@order.total_price) %></td>
       </tr>
     </tbody>
@@ -2282,20 +2379,20 @@ document.addEventListener("DOMContentLoaded", function() {
       </tr>
     </thead>
     <tbody>
-    <% if @cart_items.present? %>
-      <% @cart_items.each do |item| %>
+      <% if @order.order_items.present? %>
+        <% @order.order_items.each do |item| %>
+          <tr>
+            <td><%= item.product.name %></td>
+            <td><%= item.quantity %></td>
+            <td><%= number_to_currency(item.product.sale_price || item.product.price) %></td>
+            <td><%= number_to_currency((item.product.sale_price || item.product.price) * item.quantity) %></td>
+          </tr>
+        <% end %>
+      <% else %>
         <tr>
-          <td><%= item.product.name %></td>
-          <td><%= item.quantity %></td>
-          <td><%= number_to_currency(item.product.sale_price || item.product.price) %></td>
-          <td><%= number_to_currency((item.product.sale_price || item.product.price) * item.quantity) %></td>
+          <td colspan="4">No items in order</td>
         </tr>
       <% end %>
-    <% else %>
-      <tr>
-        <td colspan="4">No items in cart</td>
-      </tr>
-    <% end %>
     </tbody>
   </table>
 
@@ -3973,6 +4070,15 @@ class CreateOrders < ActiveRecord::Migration[7.1]
       t.string :status
       t.timestamps
     end
+  end 
+end
+
+
+
+### db/migrate/20240730163730_add_product_price_to_order_items.rb ###
+class AddProductPriceToOrderItems < ActiveRecord::Migration[7.0]
+  def change
+    add_column :order_items, :product_price, :decimal, precision: 10, scale: 2
   end
 end
 
@@ -4031,6 +4137,17 @@ class AddAddressToOrders < ActiveRecord::Migration[7.1]
     add_column :orders, :address, :string
     add_column :orders, :province, :string
     add_column :orders, :payment_method, :string
+  end
+end
+
+
+
+### db/migrate/20240730163457_add_tax_rates_to_orders.rb ###
+class AddTaxRatesToOrders < ActiveRecord::Migration[7.0]
+  def change
+    add_column :orders, :gst_rate, :decimal, precision: 5, scale: 2
+    add_column :orders, :pst_rate, :decimal, precision: 5, scale: 2
+    add_column :orders, :hst_rate, :decimal, precision: 5, scale: 2
   end
 end
 

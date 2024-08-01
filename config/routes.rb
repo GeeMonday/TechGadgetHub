@@ -1,3 +1,4 @@
+# config/routes.rb
 Rails.application.routes.draw do
   # Devise routes for user authentication
   devise_for :users, controllers: { registrations: 'users/registrations' }
@@ -17,13 +18,14 @@ Rails.application.routes.draw do
   end
 
   # Cart routes
-  resource :cart, only: [:show, :update] do
-    post 'add_to_cart'
-    delete 'remove/:id', to: 'carts#remove', as: :remove
-    get 'checkout'
-    get 'order_confirmation/:id', to: 'orders#confirmation', as: :order_confirmation
-    post 'complete_checkout'
-  end
+resource :cart, only: [:show, :update] do
+  post 'add_to_cart'
+  delete 'remove/:id', to: 'carts#remove', as: :remove
+  get 'checkout'  # This should be GET
+  get 'order_confirmation/:id', to: 'orders#confirmation', as: :order_confirmation
+  post 'complete_checkout', on: :collection  # This should be POST
+end
+
 
   # ActiveAdmin routes
   ActiveAdmin.routes(self)

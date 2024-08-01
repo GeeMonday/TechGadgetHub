@@ -8,16 +8,16 @@ ActiveAdmin.register User do
     column :email
     column :first_name
     column :last_name
-    column :address_street do |user|
+    column 'Street' do |user|
       user.address.present? ? user.address.street : "No address"
     end
-    column :address_city do |user|
+    column 'City' do |user|
       user.address.present? ? user.address.city : "No address"
     end
-    column :address_province do |user|
-      user.address.present? ? user.address.province.name : "No address"
+    column 'Province' do |user|
+      user.address.present? ? user.address.province&.name : "No address"
     end
-    column :address_postal_code do |user|
+    column 'Postal Code' do |user|
       user.address.present? ? user.address.postal_code : "No address"
     end
     column :encrypted_password do |user|
@@ -60,7 +60,6 @@ ActiveAdmin.register User do
       end
 
       # Handle address attributes properly
-      # Ensure that address attributes are updated correctly
       if params[:user][:address_attributes].present?
         params[:user][:address_attributes].delete(:_destroy) if params[:user][:address_attributes][:id].blank?
       end

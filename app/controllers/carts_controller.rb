@@ -5,6 +5,7 @@ class CartsController < ApplicationController
     @cart = current_user.cart || Cart.create(user: current_user)
     @cart_items = @cart.cart_items.includes(:product)
     @cart_total = @cart.calculate_total
+    @provinces = Province.order(:name)
   end
 
   def add_to_cart
@@ -58,56 +59,96 @@ class CartsController < ApplicationController
 
     redirect_to cart_path
   end
-
+  
   def checkout
     @cart = current_user.cart
     if @cart
       @order = Order.new(
-        address_street: current_user.address.street,
-        address_city: current_user.address.city,
-        address_postal_code: current_user.address.postal_code,
-        province_id: current_user.address.province_id,
-        total_price: @cart.calculate_total
+        address_street: current_user.address&.street,
+        address_city: current_user.address&.city,
+        address_postal_code: current_user.address&.postal_code,
+        province_id: current_user.address&.province_id,
+        user: current_user,  # Ensure the user is set
+        status: 'Pending'
       )
-      @cart_items = @cart.cart_items.includes(:product)
-      @cart_total = @cart.calculate_total
+  
+      @cart.cart_items.each do |item|
+        @order.order_items.build(
+          product: item.product,
+          quantity: item.quantity,
+          product_price: item.product.sale_price || item.product.price
+        )
+      end
+  
+      if @order.save
+        redirect_to complete_checkout_cart_path
+      else
+        flash[:alert] = "Checkout failed: #{@order.errors.full_messages.join(', ')}"
+        Rails.logger.debug "Order errors: #{@order.errors.full_messages.join(', ')}"
+        render :show
+      end
     else
       flash[:alert] = 'Cart not found.'
       redirect_to root_path
     end
   end
+   
 
   def complete_checkout
     @order = Order.new(order_params)
     @order.user = current_user
-    @order.status = 'pending'
-
+    @order.status = 'Pending'
+  
     if current_user.cart && current_user.cart.cart_items.present?
-      cart_total = current_user.cart.calculate_total
-      province = Province.find(order_params[:province_id])
-      tax_details = TaxCalculator.calculate_total_price(cart_total, province)
-
+      cart_total = current_user.cart.total_price
+      province_id = params[:order][:province_id]  # Ensure this is correct
+      tax_details = TaxCalculator.calculate_total_price(cart_total, province_id)
+  
       @order.subtotal = cart_total
       @order.gst = tax_details[:gst]
       @order.pst = tax_details[:pst]
       @order.hst = tax_details[:hst]
       @order.total_price = tax_details[:total_price]
-
+  
       if @order.save
-        redirect_to order_path(@order)
+        if process_payment(@order)
+          current_user.cart.cart_items.destroy_all
+          respond_to do |format|
+            format.html { redirect_to order_path(@order), notice: 'Checkout completed successfully.' }
+            format.turbo_stream { render turbo_stream: turbo_stream.replace('cart', partial: 'orders/confirmation', locals: { order: @order }) }
+          end
+        else
+          flash[:alert] = 'Payment failed. Please try again.'
+          Rails.logger.debug "Payment process failed for order #{@order.id}"
+          render :show
+        end
       else
-        flash[:alert] = "Order could not be processed. Errors: #{@order.errors.full_messages.join(', ')}"
-        render :checkout
+        flash[:alert] = "Order could not be processed: #{@order.errors.full_messages.join(', ')}"
+        Rails.logger.debug "Order errors: #{@order.errors.full_messages.join(', ')}"
+        render :show
       end
     else
-      flash[:alert] = "Your cart is empty or not found."
+      flash[:alert] = 'Your cart is empty or not found.'
       redirect_to cart_path
     end
+  
+    Rails.logger.debug "Order params: #{order_params.inspect}"
+    Rails.logger.debug "Cart total: #{current_user.cart.total_price}"
+    Rails.logger.debug "Province ID: #{params[:order][:province_id]}"
+    Rails.logger.debug "Tax details: #{tax_details.inspect}"
   end
+  
 
   private
 
   def order_params
     params.require(:order).permit(:address_street, :address_city, :address_postal_code, :province_id, :payment_method)
+  end
+
+  def process_payment(order)
+    # Implement your payment gateway integration here
+    # Example: Stripe payment processing
+    # Ensure you handle payment errors and edge cases
+    true # Assume payment is successful for this example
   end
 end

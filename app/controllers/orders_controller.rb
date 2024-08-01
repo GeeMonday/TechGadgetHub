@@ -7,23 +7,22 @@ class OrdersController < ApplicationController
 
   def new
     @order = Order.new
-    @cart = session[:cart] || {}
-    @products = Product.find(@cart.keys)
+    @cart = current_user.cart
+    @products = @cart.cart_items.includes(:product).map(&:product) if @cart
   end
 
   def create
     @order = Order.new(order_params)
-    @order.subtotal = @order.calculate_total
-    @order.calculate_totals
-    @order.subtotal = @order.calculate_total
-    @order.calculate_totals
+    @order.user = current_user
+    @order.status = 'Pending' # Set default status
+    @order.calculate_total # Calculate total before saving
 
     if @order.save
       add_cart_items_to_order
-      session[:cart] = nil
-      redirect_to order_path(@order), notice: 'Order was successfully created.'
+      current_user.cart.cart_items.destroy_all # Clear the cart
+      redirect_to @order, notice: 'Order was successfully created.'
     else
-      flash[:alert] = "Order could not be created. Please try again."
+      flash[:alert] = 'Order could not be created. Please try again.'
       render :new
     end
   end
@@ -46,22 +45,25 @@ class OrdersController < ApplicationController
   def set_order
     @order = Order.find(params[:id])
   rescue ActiveRecord::RecordNotFound
-    flash[:alert] = "Order not found."
+    flash[:alert] = 'Order not found.'
     redirect_to root_path
   end
 
   def order_params
     params.require(:order).permit(
-      :address_street, :address_city, :address_postal_code, :province_id, :status,
-      :subtotal, :gst, :pst, :hst, :total_price,
+      :address_street, :address_city, :address_postal_code, :province_id,
+      :status, :subtotal, :gst, :pst, :hst, :total_price,
       order_items_attributes: [:id, :product_id, :quantity, :price, :_destroy]
     )
   end
 
   def add_cart_items_to_order
-    session[:cart].each do |product_id, quantity|
-      product = Product.find(product_id)
-      @order.order_items.create(product: product, quantity: quantity, price: product.price)
+    current_user.cart.cart_items.each do |item|
+      @order.order_items.create(
+        product: item.product,
+        quantity: item.quantity,
+        price: item.product.price
+      )
     end
   end
 end
