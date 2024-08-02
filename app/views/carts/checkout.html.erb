@@ -2,7 +2,7 @@
 
 <% if @cart.cart_items.any? %>
   <h2>Order Summary</h2>
-  <table>
+  <table border="1" cellpadding="8" cellspacing="0">
     <thead>
       <tr>
         <th>Product</th>
@@ -26,27 +26,109 @@
   <h3>Subtotal: <%= number_to_currency(@cart.calculate_total) %></h3>
 
   <h2>Shipping Information</h2>
-# <%= form_with url: complete_checkout_cart_path, method: :post, local: true, data: { turbo: false } do |f| %>
-    <%= debug f %> <!-- Add this line to inspect form details -->
-    <div>
-      <%= f.label :street, 'Street' %>
-      <%= f.text_field :street, value: current_user.address&.street %>
-    </div>
-    <div>
-      <%= f.label :city, 'City' %>
-      <%= f.text_field :city, value: current_user.address&.city %>
-    </div>
-    <div>
-      <%= f.label :province_id, 'Province' %>
-      <%= f.select :province_id, options_from_collection_for_select(@provinces, :id, :name, current_user.address&.province_id) %>
-    </div>
-    <div>
-      <%= f.label :postal_code, 'Postal Code' %>
-      <%= f.text_field :postal_code, value: current_user.address&.postal_code %>
-    </div>
-
-    <%= f.submit 'Place Order' %>
+  <%= form_with model: @order, url: complete_checkout_cart_path, local: true, id: 'checkout-form' do |f| %>
+    <table>
+      <tbody>
+        <tr>
+          <th><%= f.label :address_street, 'Street' %></th>
+          <td><%= f.text_field :address_street, value: @order.address_street %></td>
+        </tr>
+        <tr>
+          <th><%= f.label :address_city, 'City' %></th>
+          <td><%= f.text_field :address_city, value: @order.address_city %></td>
+        </tr>
+        <tr>
+          <th><%= f.label :province_id, 'Province' %></th>
+          <td><%= f.select :province_id, options_from_collection_for_select(@provinces, :id, :name, @order.province_id) %></td>
+        </tr>
+        <tr>
+          <th><%= f.label :address_postal_code, 'Postal Code' %></th>
+          <td><%= f.text_field :address_postal_code, value: @order.address_postal_code, id: 'postal-code' %></td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <div id="card-element"></div>
+            <div id="card-errors" role="alert"></div>
+            <%= f.hidden_field :stripe_token, id: 'stripe-token' %>
+            <%= f.submit 'Place Order', class: 'btn btn-primary' %>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   <% end %>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var stripe = Stripe('pk_test_51PhMLa2MouneNz1OOYZxYYKWm8cI4Y8hvTr2WGc7li6y9Tc8yok6k41BmkOouCwkDkuTHmRhUzhj4n08TnEUDBvU00Tsn3oN3Z');
+      var elements = stripe.elements();
+      var cardElement = elements.create('card');
+      cardElement.mount('#card-element');
+
+      var form = document.getElementById('checkout-form');
+      form.addEventListener('submit', function(event) {
+        event.preventDefault();
+        stripe.createToken(cardElement).then(function(result) {
+          if (result.error) {
+            // Show error in #card-errors
+            var errorElement = document.getElementById('card-errors');
+            errorElement.textContent = result.error.message;
+          } else {
+            // Send the token to your server
+            var hiddenInput = document.getElementById('stripe-token');
+            hiddenInput.value = result.token.id;
+            form.submit(); // Submit the form
+          }
+        });
+      });
+    });
+  </script>
+
 <% else %>
   <p>Your cart is empty.</p>
 <% end %>
+
+
+<style>
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+  }
+  th, td {
+    padding: 8px;
+    text-align: left;
+  }
+  th {
+    background-color: #f2f2f2;
+  }
+  tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  h2 {
+    margin-top: 20px;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 5px;
+  }
+  h3 {
+    margin-top: 10px;
+  }
+  .btn {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 5px;
+  }
+  .btn-primary {
+    background-color: #007bff;
+  }
+  .btn-primary:hover {
+    background-color: #0056b3;
+  }
+</style>
