@@ -23,7 +23,7 @@ resource :cart, only: [:show, :update] do
   delete 'remove/:id', to: 'carts#remove', as: :remove
   get 'checkout'  # This should be GET
   get 'order_confirmation/:id', to: 'orders#confirmation', as: :order_confirmation
-  post 'complete_checkout', on: :collection  # This should be POST
+  post 'complete_checkout'
 end
 
 
