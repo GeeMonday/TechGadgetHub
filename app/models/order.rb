@@ -32,7 +32,7 @@ class Order < ApplicationRecord
   end
 
   def paid?
-    self.status == 'Paid' # Or whatever condition indicates the order is paid
+    self.status == 'Paid' # Adjust this condition as necessary for your application
   end
 
   private
