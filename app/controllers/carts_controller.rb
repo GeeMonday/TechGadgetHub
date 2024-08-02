@@ -72,78 +72,70 @@ class CartsController < ApplicationController
         status: 'Pending'
       )
   
-      @cart.cart_items.each do |item|
-        @order.order_items.build(
-          product: item.product,
-          quantity: item.quantity,
-          product_price: item.product.sale_price || item.product.price
-        )
-      end
-  
-      if @order.save
-        redirect_to complete_checkout_cart_path
-      else
-        flash[:alert] = "Checkout failed: #{@order.errors.full_messages.join(', ')}"
-        Rails.logger.debug "Order errors: #{@order.errors.full_messages.join(', ')}"
-        render :show
-      end
+      # Initialize provinces for the dropdown
+      @provinces = Province.order(:name)
     else
-      flash[:alert] = 'Cart not found.'
-      redirect_to root_path
+      flash[:alert] = 'Your cart is empty or not found.'
+      redirect_to cart_path
     end
   end
-   
-
+  
   def complete_checkout
     @order = Order.new(order_params)
     @order.user = current_user
-    @order.status = 'Pending'
+    @order.status = 'pending'
+    
+    @cart = current_user.cart
+    @provinces = Province.order(:name)  # Ensure provinces are set here
   
-    if current_user.cart && current_user.cart.cart_items.present?
-      cart_total = current_user.cart.total_price
-      province_id = params[:order][:province_id]  # Ensure this is correct
-      tax_details = TaxCalculator.calculate_total_price(cart_total, province_id)
+    if @cart && @cart.cart_items.present?
+      cart_total = @cart.cart_items.sum do |item|
+        item.product.price * item.quantity
+      end
   
+      province = params[:order][:province_id]
+      tax_details = TaxCalculator.calculate_total_price(cart_total, province)
+  
+      # Debug log
+      Rails.logger.debug "Cart Total: #{cart_total}"
+      Rails.logger.debug "Tax Details: #{tax_details.inspect}"
+  
+      # Ensure the tax details and subtotal are set
       @order.subtotal = cart_total
       @order.gst = tax_details[:gst]
       @order.pst = tax_details[:pst]
       @order.hst = tax_details[:hst]
       @order.total_price = tax_details[:total_price]
   
+      # Debug log for order before saving
+      Rails.logger.debug "Order Details Before Save: #{@order.attributes.inspect}"
+  
       if @order.save
-        if process_payment(@order)
-          current_user.cart.cart_items.destroy_all
-          respond_to do |format|
-            format.html { redirect_to order_path(@order), notice: 'Checkout completed successfully.' }
-            format.turbo_stream { render turbo_stream: turbo_stream.replace('cart', partial: 'orders/confirmation', locals: { order: @order }) }
-          end
-        else
-          flash[:alert] = 'Payment failed. Please try again.'
-          Rails.logger.debug "Payment process failed for order #{@order.id}"
-          render :show
+  
+        respond_to do |format|
+          format.html { redirect_to order_path(@order), notice: 'Checkout completed successfully.' }
+          format.turbo_stream { render turbo_stream: turbo_stream.replace('cart', partial: 'orders/confirmation', locals: { order: @order }) }
         end
       else
-        flash[:alert] = "Order could not be processed: #{@order.errors.full_messages.join(', ')}"
-        Rails.logger.debug "Order errors: #{@order.errors.full_messages.join(', ')}"
-        render :show
+        flash[:alert] = "Order could not be processed. Errors: #{@order.errors.full_messages.join(', ')}"
+        respond_to do |format|
+          format.html { render :checkout }
+          format.turbo_stream { render turbo_stream: turbo_stream.replace('checkout', partial: 'carts/checkout', locals: { order: @order }) }
+        end
       end
     else
-      flash[:alert] = 'Your cart is empty or not found.'
+      flash[:alert] = "Your cart is empty or not found."
       redirect_to cart_path
     end
-  
-    Rails.logger.debug "Order params: #{order_params.inspect}"
-    Rails.logger.debug "Cart total: #{current_user.cart.total_price}"
-    Rails.logger.debug "Province ID: #{params[:order][:province_id]}"
-    Rails.logger.debug "Tax details: #{tax_details.inspect}"
   end
-  
+
 
   private
 
   def order_params
     params.require(:order).permit(:address_street, :address_city, :address_postal_code, :province_id, :payment_method)
   end
+  
 
   def process_payment(order)
     # Implement your payment gateway integration here
