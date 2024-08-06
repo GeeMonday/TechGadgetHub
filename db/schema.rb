@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_08_01_152420) do
+ActiveRecord::Schema[7.1].define(version: 2024_08_05_044228) do
   create_table "active_admin_comments", force: :cascade do |t|
     t.string "namespace"
     t.text "body"
@@ -115,6 +115,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_01_152420) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.decimal "product_price", precision: 10, scale: 2
+    t.decimal "sale_price"
     t.index ["order_id"], name: "index_order_items_on_order_id"
     t.index ["product_id"], name: "index_order_items_on_product_id"
   end
@@ -123,7 +124,6 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_01_152420) do
     t.integer "user_id"
     t.integer "province_id"
     t.decimal "total_price"
-    t.string "status"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "address"
@@ -137,6 +137,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_01_152420) do
     t.string "address_city"
     t.string "address_postal_code"
     t.string "stripe_charge_id"
+    t.integer "status", default: 0, null: false
   end
 
   create_table "payments", force: :cascade do |t|
@@ -166,6 +167,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_01_152420) do
     t.string "image_url"
     t.boolean "on_sale"
     t.decimal "sale_price"
+    t.integer "category_id"
   end
 
   create_table "provinces", force: :cascade do |t|
@@ -202,17 +204,10 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_01_152420) do
     t.string "email", null: false
     t.string "first_name"
     t.string "last_name"
-    t.integer "address_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "user_id"
     t.datetime "remember_created_at"
-    t.string "address_zip_code"
-    t.string "address_state"
-    t.string "address_city"
-    t.string "address_street"
-    t.index ["address_id"], name: "index_users_on_address_id"
-    t.index ["user_id"], name: "index_users_on_user_id"
   end
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
@@ -222,6 +217,5 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_01_152420) do
   add_foreign_key "product_categories", "categories"
   add_foreign_key "product_categories", "products"
   add_foreign_key "tax_rates", "provinces"
-  add_foreign_key "users", "addresses"
   add_foreign_key "users", "users"
 end
