@@ -1,9 +1,11 @@
 class StaticPagesController < ApplicationController
   def show
-    # First, attempt to find a StaticPage by its title
+    # Attempt to find a StaticPage by title
     @page = StaticPage.find_by(title: params[:title])
     
-    # If no page is found by title, fall back to finding by ID
-    @page ||= StaticPage.find(params[:id]) if params[:id].present?
+    # If not found, show a 404 page
+    if @page.nil?
+      render file: 'public/404.html', status: :not_found
+    end
   end
 end

@@ -21,7 +21,7 @@ class ProductsController < ApplicationController
     end
 
     if params[:name].present?
-      @products = @products.where("name ILIKE ?", "%#{params[:name]}%")
+      @products = @products.where("LOWER(name) LIKE ?", "%#{params[:name].downcase}%")
     end
 
     # Paginate the results

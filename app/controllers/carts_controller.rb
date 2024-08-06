@@ -69,7 +69,7 @@ class CartsController < ApplicationController
         address_postal_code: current_user.address&.postal_code,
         province_id: current_user.address&.province_id,
         user: current_user,  # Ensure the user is set
-        status: 'Pending'
+        status: 'new_order'
       )
   
       # Initialize provinces for the dropdown
@@ -83,7 +83,7 @@ class CartsController < ApplicationController
   def complete_checkout
     @order = Order.new(order_params)
     @order.user = current_user
-    @order.status = 'pending'
+    @order.status = 'new_order'
     
     @cart = current_user.cart
     @provinces = Province.order(:name)  # Ensure provinces are set here
@@ -107,6 +107,15 @@ class CartsController < ApplicationController
       @order.hst = tax_details[:hst]
       @order.total_price = tax_details[:total_price]
   
+      # Create order items
+      @cart.cart_items.each do |item|
+        @order.order_items.build(
+          product: item.product,
+          quantity: item.quantity,
+          price: item.product.price
+        )
+      end
+  
       # Debug log for order before saving
       Rails.logger.debug "Order Details Before Save: #{@order.attributes.inspect}"
   
@@ -128,6 +137,7 @@ class CartsController < ApplicationController
       redirect_to cart_path
     end
   end
+  
 
 
   private
