@@ -1,10 +1,18 @@
+# app/models/order.rb
 class Order < ApplicationRecord
+  enum status: { new_order: 0, paid: 1, shipped: 2 }
   belongs_to :user
   belongs_to :province # Ensure you have a belongs_to association with Province
   has_one :address, through: :user
   has_many :order_items, dependent: :destroy
   has_many :products, through: :order_items
   accepts_nested_attributes_for :order_items, allow_destroy: true
+
+    # Example regex for Canadian postal codes (e.g., A1A 1A1)
+    POSTAL_CODE_REGEX = /\A[A-Za-z]\d[A-Za-z] \d[A-Za-z]\d\z/
+
+    validates :address_postal_code, presence: true, format: { with: POSTAL_CODE_REGEX, message: 'must be in the format A1A 1A1' }
+  
 
   validates :user, presence: true
   validates :status, presence: true
@@ -60,10 +68,14 @@ class Order < ApplicationRecord
   end
 
   def self.ransackable_associations(auth_object = nil)
-    ["address", "order_items", "user"]
+    ["address", "order_items", "user", "province"]
   end
 
   def self.ransackable_attributes(auth_object = nil)
     %w[id user_id created_at updated_at status total_price subtotal gst pst hst address_street address_city address_postal_code province_id]
+  end
+  
+  ransacker :province_name do |parent|
+    parent.table[:province_id]
   end
 end
