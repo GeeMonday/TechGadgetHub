@@ -16,11 +16,13 @@ class TaxCalculator
       'YT' => { gst: 0.05, pst: 0.0, hst: 0.0 }  # Yukon
     }
   
-    def self.calculate_total_price(subtotal, province)
-      rates = TAX_RATES[province] || { gst: 0.05, pst: 0.0, hst: 0.0 }
-      gst = rates[:gst]
-      pst = rates[:pst]
-      hst = rates[:hst]
+    def self.calculate_total_price(subtotal, province_code)
+      tax_rate = TaxRate.find_by(province: Province.find_by(code: province_code))
+      return { subtotal: subtotal, gst: 0.0, pst: 0.0, hst: 0.0, total_price: subtotal } unless tax_rate
+  
+      gst = tax_rate.gst
+      pst = tax_rate.pst
+      hst = tax_rate.hst
   
       gst_amount = subtotal * gst
       pst_amount = subtotal * pst
