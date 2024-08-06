@@ -74,6 +74,12 @@
   </tbody>
 </table>
 
+<div class="btn-group" role="group">
+  <%= link_to 'Back to Cart', cart_path, class: 'btn btn-primary' %>
+
+  <%= link_to 'Continue Shopping', products_path, class: 'btn btn-secondary' %>
+</div>
+
 <style>
   table {
     width: 100%;
@@ -94,5 +100,8 @@
     margin-top: 20px;
     border-bottom: 2px solid #ddd;
     padding-bottom: 5px;
+  }
+  .btn-group {
+    margin-top: 20px;
   }
 </style>

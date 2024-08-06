@@ -2,7 +2,7 @@
 
 <% if @cart.cart_items.any? %>
   <h2>Order Summary</h2>
-  <table border="1" cellpadding="8" cellspacing="0">
+  <table>
     <thead>
       <tr>
         <th>Product</th>
@@ -16,77 +16,46 @@
         <tr>
           <td><%= item.product.name %></td>
           <td><%= item.quantity %></td>
-          <td><%= number_to_currency(item.product.sale_price || item.product.price) %></td>
-          <td><%= number_to_currency(item.quantity * (item.product.sale_price || item.product.price)) %></td>
+          <td><%= number_to_currency(item.product.price) %></td>
+          <td><%= number_to_currency(item.product.price * item.quantity) %></td>
         </tr>
       <% end %>
     </tbody>
   </table>
 
-  <h3>Subtotal: <%= number_to_currency(@cart.calculate_total) %></h3>
+  <h3>Subtotal: <%= number_to_currency(@cart.cart_items.sum { |item| item.product.price * item.quantity }) %></h3>
 
-  <h2>Shipping Information</h2>
-  <%= form_with model: @order, url: complete_checkout_cart_path, local: true, id: 'checkout-form' do |f| %>
-    <table>
-      <tbody>
-        <tr>
-          <th><%= f.label :address_street, 'Street' %></th>
-          <td><%= f.text_field :address_street, value: @order.address_street %></td>
-        </tr>
-        <tr>
-          <th><%= f.label :address_city, 'City' %></th>
-          <td><%= f.text_field :address_city, value: @order.address_city %></td>
-        </tr>
-        <tr>
-          <th><%= f.label :province_id, 'Province' %></th>
-          <td><%= f.select :province_id, options_from_collection_for_select(@provinces, :id, :name, @order.province_id) %></td>
-        </tr>
-        <tr>
-          <th><%= f.label :address_postal_code, 'Postal Code' %></th>
-          <td><%= f.text_field :address_postal_code, value: @order.address_postal_code, id: 'postal-code' %></td>
-        </tr>
-        <tr>
-          <td colspan="2">
-            <div id="card-element"></div>
-            <div id="card-errors" role="alert"></div>
-            <%= f.hidden_field :stripe_token, id: 'stripe-token' %>
-            <%= f.submit 'Place Order', class: 'btn btn-primary' %>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <%= form_with model: @order, url: complete_checkout_cart_path, method: :post, local: true do |f| %>
+    <div class="form-group">
+      <%= f.label :address_street, 'Street Address' %>
+      <%= f.text_field :address_street, value: current_user.address&.street, class: 'form-control' %>
+    </div>
+    <div class="form-group">
+      <%= f.label :address_city, 'City' %>
+      <%= f.text_field :address_city, value: current_user.address&.city, class: 'form-control' %>
+    </div>
+    <div class="form-group">
+      <%= f.label :address_postal_code, 'Postal Code' %>
+      <%= f.text_field :address_postal_code, value: current_user.address&.postal_code, class: 'form-control' %>
+      <% if @order.errors[:address_postal_code].any? %>
+        <div class="text-danger">
+          <% @order.errors[:address_postal_code].each do |error| %>
+            <p><%= error %></p>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+    <div class="form-group">
+      <%= f.label :province_id, 'Province' %>
+      <%= f.collection_select :province_id, @provinces, :id, :name, include_blank: 'Select Province', class: 'form-control' %>
+    </div>
+    <div>
+      <%= f.submit 'Place Order', id: 'complete-order-button', class: 'btn btn-primary' %>
+    </div>
   <% end %>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var stripe = Stripe('pk_test_51PhMLa2MouneNz1OOYZxYYKWm8cI4Y8hvTr2WGc7li6y9Tc8yok6k41BmkOouCwkDkuTHmRhUzhj4n08TnEUDBvU00Tsn3oN3Z');
-      var elements = stripe.elements();
-      var cardElement = elements.create('card');
-      cardElement.mount('#card-element');
-
-      var form = document.getElementById('checkout-form');
-      form.addEventListener('submit', function(event) {
-        event.preventDefault();
-        stripe.createToken(cardElement).then(function(result) {
-          if (result.error) {
-            // Show error in #card-errors
-            var errorElement = document.getElementById('card-errors');
-            errorElement.textContent = result.error.message;
-          } else {
-            // Send the token to your server
-            var hiddenInput = document.getElementById('stripe-token');
-            hiddenInput.value = result.token.id;
-            form.submit(); // Submit the form
-          }
-        });
-      });
-    });
-  </script>
-
 <% else %>
   <p>Your cart is empty.</p>
 <% end %>
-
 
 <style>
   table {
@@ -130,5 +99,17 @@
   }
   .btn-primary:hover {
     background-color: #0056b3;
+  }
+  .form-group {
+    margin-bottom: 15px;
+  }
+  .form-control {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  .text-danger {
+    color: #dc3545;
   }
 </style>
