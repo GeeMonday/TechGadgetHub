@@ -20,13 +20,40 @@ ActiveAdmin.register User do
     column 'Postal Code' do |user|
       user.address.present? ? user.address.postal_code : "No address"
     end
-    column :encrypted_password do |user|
-      user.encrypted_password
-    end
     column 'Past Orders' do |user|
       link_to 'View Orders', admin_orders_path(q: { user_id_eq: user.id })
     end
     actions
+  end
+
+  show do
+    attributes_table do
+      row :username
+      row :email
+      row :first_name
+      row :last_name
+      row :created_at
+      row :updated_at
+      row :address do |user|
+        if user.address.present?
+          div do
+            "Street: #{user.address.street}"
+          end
+          div do
+            "City: #{user.address.city}"
+          end
+          div do
+            "Province: #{user.address.province&.name}"
+          end
+          div do
+            "Postal Code: #{user.address.postal_code}"
+          end
+        else
+          "No Address"
+        end
+      end
+    end
+    active_admin_comments
   end
 
   form do |f|

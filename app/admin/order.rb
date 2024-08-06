@@ -3,15 +3,9 @@ ActiveAdmin.register Order do
     selectable_column
     id_column
     column :user
-    column 'Street' do |order|
-      order.address_street
-    end
-    column 'City' do |order|
-      order.address_city
-    end
-    column 'Postal Code' do |order|
-      order.address_postal_code
-    end
+    column 'Street', :address_street
+    column 'City', :address_city
+    column 'Postal Code', :address_postal_code
     column 'Province' do |order|
       order.province&.name
     end
@@ -21,25 +15,32 @@ ActiveAdmin.register Order do
     column :pst
     column :hst
     column :total_price
-    column :created_at
-    column :updated_at
+    column 'Created At' do |order|
+      order.created_at.in_time_zone('Eastern Time (US & Canada)').strftime('%B %d, %Y %H:%M')
+    end
+    column 'Updated At' do |order|
+      order.updated_at.in_time_zone('Eastern Time (US & Canada)').strftime('%B %d, %Y %H:%M')
+    end
     actions
   end
 
-  # Custom Ransack filter configuration
-  filter :user, as: :select, collection: -> { User.pluck(:username, :id) }
+  filter :user
   filter :address_street, as: :string, label: 'Street'
   filter :address_city, as: :string, label: 'City'
   filter :address_postal_code, as: :string, label: 'Postal Code'
-  filter :province_name, as: :string, label: 'Province'
-  filter :status
+  filter :province, as: :select, collection: -> { Province.all }
+  filter :status, as: :select, collection: Order.statuses.keys.map { |status| [status.humanize, status] }
   filter :subtotal
+  filter :gst
+  filter :pst
+  filter :hst
   filter :total_price
   filter :created_at
+  filter :updated_at
 
   form do |f|
     f.inputs 'Order Details' do
-      f.input :status
+      f.input :status, as: :select, collection: Order.statuses.keys.map { |status| [status.humanize, status] }
       f.input :subtotal
       f.input :gst
       f.input :pst
@@ -74,8 +75,12 @@ ActiveAdmin.register Order do
       row :pst
       row :hst
       row :total_price
-      row :created_at
-      row :updated_at
+      row 'Created At' do
+        order.created_at.in_time_zone('Eastern Time (US & Canada)').strftime('%B %d, %Y %H:%M')
+      end
+      row 'Updated At' do
+        order.updated_at.in_time_zone('Eastern Time (US & Canada)').strftime('%B %d, %Y %H:%M')
+      end
       row 'Street' do
         order.address_street
       end
@@ -102,15 +107,23 @@ ActiveAdmin.register Order do
           item.quantity
         end
         column 'Price' do |item|
-          number_to_currency(item.price)
+          if item.product.sale_price.present?
+            number_to_currency(item.product.sale_price)
+          else
+            number_to_currency(item.price)
+          end
         end
         column 'Total' do |item|
-          number_to_currency(item.price * item.quantity)
+          if item.product.sale_price.present?
+            number_to_currency(item.product.sale_price * item.quantity)
+          else
+            number_to_currency(item.price * item.quantity)
+          end
         end
       end
     end
   end
 
   permit_params :status, :subtotal, :gst, :pst, :hst, :total_price, :address_street, :address_city, :address_postal_code, :province_id,
-                order_items_attributes: [:id, :product_id, :quantity, :price, :_destroy]
+                order_items_attributes: [:id, :product_id, :quantity, :product_price, :_destroy]
 end
